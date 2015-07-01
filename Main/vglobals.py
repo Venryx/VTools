@@ -1,5 +1,11 @@
 from vtools import *
-#from vtools.vglobals import *
+'''moduleNamesToNiceNames = {"v": "V", "vdebug": "VDebug", "vglobals": "VGlobals", "vtools": "VTools"}
+for name, niceName in enumerate(moduleNamesToNiceNames):
+	exec(niceName + " = " + name)'''
+moduleNiceNames = ["V", "VDebug", "VGlobals", "VTools"]
+for niceName in moduleNiceNames:
+	if niceName.lower() in locals() or niceName.lower() in globals():
+		exec(niceName + " = " + niceName.lower())
 
 import re
 import math
@@ -17,11 +23,29 @@ null = None
 false = False
 true = True
 
+# V class links
+# ==========
+
+def Objects():
+	return bpy.data.objects
+def Obj(name):
+	for obj in bpy.data.objects:
+		if obj.name == name:
+			return obj
+	return null
+def Selected():
+	return bpy.context.selected_objects
+def Active():
+	return bpy.context.scene.objects.active
+
+def Get3DCursorPosition():
+	return bpy.context.scene.cursor_location
+
 # general
 # ==========
 
 def Nothing():
-	a = ""
+	pass
 
 def Log(message):
 	print(message)
@@ -111,7 +135,36 @@ def GetBounds(s):
 	return result
 #AddMethod(bpy_types.Object, GetBounds)
 bpy_types.Object.GetBounds = GetBounds
-del(GetBounds)
+#del(GetBounds)
+
+def ToLocal(s, pos):
+	return s.matrix_world.inverted() * pos
+bpy_types.Object.ToLocal = ToLocal
+
+def ToWorld(s, pos):
+	return s.matrix_world * pos
+bpy_types.Object.ToWorld = ToWorld
+
+def SetOrigin(s, pos, preserveLinkedCopyFinalTransforms = true):
+	oldCursorPos = bpy.context.scene.cursor_location.copy()
+	bpy.context.scene.cursor_location = s.ToGlobal(pos)
+	bpy.ops.object.origin_set(type = "ORIGIN_CURSOR")
+	bpy.context.scene.cursor_location = oldCursorPos
+
+	if preserveLinkedCopyFinalTransforms:
+		for obj in s.GetLinkedCopies():
+			#obj.location += pos
+			#obj.location = obj.ToWorld(pos)
+			obj.location += (obj.rotation_euler.to_matrix() * pos)
+bpy_types.Object.SetOrigin = SetOrigin
+
+def GetLinkedCopies(s, includeSelf = false):
+	result = []
+	for obj in Objects():
+		if obj.data == s.data and (obj != s or includeSelf):
+				result.append(obj)
+	return result
+bpy_types.Object.GetLinkedCopies = GetLinkedCopies
 
 def GetDescendents(s):
 	result = []
@@ -119,9 +172,7 @@ def GetDescendents(s):
 		result.append(child)
 		result.extend(child.GetDescendents())
 	return result
-#AddMethod(bpy_types.Object, GetDescendents)
 bpy_types.Object.GetDescendents = GetDescendents
-del(GetDescendents)
 
 # bounds class
 # ==========

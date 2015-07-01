@@ -15,12 +15,6 @@ import bpy
 # console helpers
 # ==========
 
-def GetObjByName(name):
-	for obj in data["objects"]:
-		if obj.name == name:
-			return obj
-	return null
-
 # general
 # ==========
 
@@ -47,6 +41,13 @@ def Quaternion_toDegrees(q):
 	return Vector_toDegrees(pos), Quaternion_toDegrees(rot) if type(rot) == Quaternion else Vector_toDegrees(rot), Vector_toDegrees(scale)
 def matrixParts_toRadians(pos, rot, scale):
 	return Vector_toRadians(pos), Quaternion_toRadians(rot) if type(rot) == Quaternion else Vector_toRadians(rot), Vector_toRadians(scale)'''
+
+# use like this:
+#	bpy_types.Object.ToGlobal = F("msg", "print(msg)")
+def F(arglist, body):
+    g = {}
+    exec("def anonfunc({0}):\n{1}".format(arglist, "\n".join("    {0}".format(line) for line in body.splitlines())), g)
+    return g["anonfunc"]
 
 # utils
 # ==========
@@ -119,8 +120,7 @@ def generate_mesh_filename(meshname, filepath):
 # ==========
 
 def bbox(vertices):
-	"""Compute bounding box of vertex array.
-	"""
+	"""Compute bounding box of vertex array."""
 
 	if len(vertices) > 0:
 		minx = maxx = vertices[0].co.x
@@ -149,8 +149,7 @@ def bbox(vertices):
 		return { 'x':[0,0], 'y':[0,0], 'z':[0,0] }
 
 def translate(vertices, t):
-	"""Translate array of vertices by vector t.
-	"""
+	"""Translate array of vertices by vector t."""
 
 	for i in range(len(vertices)):
 		vertices[i].co.x += t[0]
@@ -158,8 +157,7 @@ def translate(vertices, t):
 		vertices[i].co.z += t[2]
 
 def center(vertices):
-	"""Center model (middle of bounding box).
-	"""
+	"""Center model (middle of bounding box)."""
 
 	bb = bbox(vertices)
 
@@ -172,8 +170,7 @@ def center(vertices):
 	return [-cx,-cy,-cz]
 
 def top(vertices):
-	"""Align top of the model with the floor (Y-axis) and center it around X and Z.
-	"""
+	"""Align top of the model with the floor (Y-axis) and center it around X and Z."""
 
 	bb = bbox(vertices)
 
@@ -186,8 +183,7 @@ def top(vertices):
 	return [-cx,-cy,-cz]
 
 def bottom(vertices):
-	"""Align bottom of the model with the floor (Y-axis) and center it around X and Z.
-	"""
+	"""Align bottom of the model with the floor (Y-axis) and center it around X and Z."""
 
 	bb = bbox(vertices)
 

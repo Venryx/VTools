@@ -18,10 +18,8 @@ import bmesh
 # operators
 # ==========
 
-hiddenVar = "hi100"
-
 class SetOriginTo3DCursor_KeepLinkedObjectPositions(bpy.types.Operator):
-	bl_idname = "view3d.test0"
+	bl_idname = "view3d.set_origin_to_3d_cursor__keep_linked_object_positions"
 	bl_label = "Set origin to 3D cursor - keep linked object positions"
 	@classmethod
 	def poll(cls, context):
@@ -30,22 +28,6 @@ class SetOriginTo3DCursor_KeepLinkedObjectPositions(bpy.types.Operator):
 		# todo
 
 		return {'FINISHED'}
-
-class Test1(bpy.types.Operator):
-	bl_idname = "view3d.test1"
-	bl_label = "Test1"
-	@classmethod
-	def poll(cls, context):
-		return context.active_object is not null
-	def execute(self, context):
-		#global hiddenVar
-		Log(hiddenVar)
-		#Log(bpy.VTools.hiddenVar)
-
-		#return {'FINISHED'}
-		set = {"FINISHED"}
-		#set. = "hi101"
-		return set
 
 # registration stuff
 # ==========

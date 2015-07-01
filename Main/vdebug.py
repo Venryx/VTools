@@ -6,8 +6,7 @@ import time
 # profiling
 # ==========
 
-'''
-def StartBlock():
+'''def StartBlock():
 {
 	stopwatch.Reset();
 	stopwatch.Start();
@@ -25,11 +24,9 @@ public static void Block(string name = null)
 		MidBlock(name);
 	else
 		StartBlock();
-}
-'''
+}'''
 
-'''
-sectionStartTime = 0
+'''sectionStartTime = 0
 sectionTotals = {}
 def StartSection():
 	sectionStartTime = time.clock()
@@ -50,8 +47,7 @@ def Section(name = null, mark = false):
 	if name != null:
 		MidSection(name, mark) # or end section; mid-section method works for either (since the next start-section will just ignore the hanging-section timer data)
 	else:
-		StartSection()
-'''
+		StartSection()'''
 
 sectionStartTimes_unnamed = []
 sectionStartTimes = {}
