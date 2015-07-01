@@ -23,6 +23,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="v.py" />
+    <Compile Include="vdebug.py" />
+    <Compile Include="vglobals.py" />
     <Compile Include="vtools.py" />
     <Compile Include="__init__.py" />
   </ItemGroup>
