@@ -5,6 +5,8 @@ import re
 import math
 from mathutils import *
 
+import bpy
+
 # snippets
 # ==========
 
@@ -255,6 +257,7 @@ def CreateObject_Empty(name, position = (0, 0, 0), rotation = (0, 0, 0, 1), scal
 	rotation = Vector(rotation)
 	scale = Vector(scale)
 
+	import bpy
 	result = bpy.data.objects.new(name, None)
 
 	scene = bpy.context.scene

@@ -205,6 +205,103 @@ def restore_settings_export(context, properties, self):
 			self.properties[name] = settings[name] if name in settings else defaults[name]''#'
 '''
 
+# operation that sets up "globals" versions of the for-console module vars created below
+# ==========
+
+'''import bpy
+class SetUpGlobals(bpy.types.Operator):
+	bl_idname = "view3d.set_up_globals"
+	bl_label = "Set up globals"
+	@classmethod
+	def poll(cls, context):
+		Log("Checking for set up globals")
+		if context.area.type == "CONSOLE":
+			# set up their "globals" versions
+			for propName in ["VTools_Main", "V", "VDebug", "VGlobals", "VTools"]:
+				bpy.ops.console.clear_line()
+				bpy.ops.console.insert(text = propName + " = bpy." + propName)
+				bpy.ops.console.execute()
+			Log("Set up globals")
+		return false
+	def execute(self, context):
+		return {'FINISHED'}'''
+
+'''import bpy
+class SetUpGlobals(bpy.types.Operator):
+	bl_idname = "view3d.set_up_globals"
+	bl_label = "Set up globals"
+	@classmethod
+	def poll(cls, context):
+		return true
+	def execute(self, context):
+		oldType = context.area.type
+		for propName in ["VTools_Main", "V", "VDebug", "VGlobals", "VTools"]:
+			bpy.ops.console.clear_line()
+			bpy.ops.console.insert(text = propName + " = bpy." + propName)
+			bpy.ops.console.execute()
+		context.area.type = oldType
+		return {'FINISHED'}
+bpy.Start = bpy.ops.view3d.set_up_globals
+bpy.Start()'''
+
+'''import bpy
+from bpy.app.handlers import persistent
+@persistent
+def PostLoad(scene):
+	bpy.app.handlers.load_post.remove(PostLoad)
+	Log("Post load")
+	''#'oldType = bpy.context.area.type
+	for propName in ["VTools_Main", "V", "VDebug", "VGlobals", "VTools"]:
+		bpy.ops.console.clear_line()
+		bpy.ops.console.insert(text = propName + " = bpy." + propName)
+		bpy.ops.console.execute()
+	bpy.context.area.type = oldType''#'
+
+	for window in bpy.context.window_manager.windows:
+		screen = window.screen
+		for area in screen.areas:
+			oldType = area.type
+			area.type = "CONSOLE"
+			for propName in ["VTools_Main", "V", "VDebug", "VGlobals", "VTools"]:
+				override = {"window": window, "screen": screen, "area": area, "region": area.regions[0]}
+
+				bpy.ops.console.clear_line(override)
+				Log("Running: " + (propName + " = bpy." + propName))
+				bpy.ops.console.insert(override, text = propName + " = bpy." + propName)
+				bpy.ops.console.execute(override)
+			area.type = oldType
+
+			''#'if area.type == "CONSOLE":
+				for region in area.regions:
+					if region.type == "WINDOW":
+						override = {"window": window, "screen": screen, "area": area, "region": region}
+						bpy.ops.screen.screen_full_area(override)
+						break''#'
+bpy.app.handlers.load_post.append(PostLoad)'''
+
+lastUpdate_area = null
+
+import bpy
+from bpy.app.handlers import persistent
+@persistent
+def PostUpdate(scene):
+	global lastUpdate_area
+	if bpy.context.area != lastUpdate_area: # if the active area just changed, ignore this call (handling a switch to a Console panel causes a crash)
+		lastUpdate_area = bpy.context.area
+		return
+
+	if bpy.context.area and bpy.context.area.type == "CONSOLE": # if an area is now active, and that area is a Console panel
+		bpy.app.handlers.scene_update_post.remove(PostUpdate) # remove this to have the globals set for every Console panel, rather than just the first
+		Log("Setting up globals")
+		oldType = bpy.context.area.type
+		#bpy.context.area.type = "CONSOLE"
+		for propName in ["VTools_Main", "V", "VDebug", "VGlobals", "VTools"]:
+			bpy.ops.console.clear_line()
+			bpy.ops.console.insert(text = propName + " = bpy." + propName)
+			bpy.ops.console.execute()
+		#bpy.context.area.type = oldType
+bpy.app.handlers.scene_update_post.append(PostUpdate)
+
 # registration stuff
 # ==========
 
@@ -237,7 +334,21 @@ def ReloadModules():
 	import vtools.vglobals
 	import vtools.vtools
 
+	# make modules available to console panels
+	# ==========
+
+	import bpy
+	bpy.VTools_Main = sys.modules[__name__] #["vtools"]
+	bpy.V = v
+	bpy.VDebug = vdebug
+	bpy.VGlobals = vglobals
+	bpy.VTools = bpy.VTools_Main.vtools
+
 def register():
+	#bpy.utils.register_module(__name__) #("vtools")
+
 	ReloadModules()
-if __name__ == "__main__":
-	register()
+def unregister():
+	Nothing()
+#if __name__ == "__main__":
+#	register()
