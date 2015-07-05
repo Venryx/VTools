@@ -78,7 +78,10 @@ def s(obj, numberTruncate = null):
 		if result == ".0" or result == "-.0":
 			result = "0"
 	elif type(obj) == Vector: #elif obj is Vector:
-		result = "[" + s(obj.x, numberTruncate) + " " + s(obj.y, numberTruncate) + " " + s(obj.z, numberTruncate) + "]"
+		if "z" in obj:
+			result = "[" + s(obj.x, numberTruncate) + " " + s(obj.y, numberTruncate) + " " + s(obj.z, numberTruncate) + "]"
+		else:
+			result = "[" + s(obj.x, numberTruncate) + " " + s(obj.y, numberTruncate) + "]"
 	elif type(obj) == Quaternion:
 		result = "[" + s(obj.x, numberTruncate) + " " + s(obj.y, numberTruncate) + " " + s(obj.z, numberTruncate) + " " + s(obj.w, numberTruncate) + "]"
 	else:
@@ -173,6 +176,26 @@ def GetDescendents(s):
 		result.extend(child.GetDescendents())
 	return result
 bpy_types.Object.GetDescendents = GetDescendents
+
+# AnimData
+# ==========
+
+'''def ActionContainsChannelsForArmature(action, armature):
+	armatureBoneNames = [x.name for x in armature.bones]
+	for fcurve in action.fcurves:
+		boneName = fcurve.data_path[fcurve.data_path.find('"') + 1:fcurve.data_path.find('"', fcurve.data_path.find('"') + 1)]
+		if boneName in armatureBoneNames:
+			return true
+	return false
+
+def GetActions(s):
+	result = []
+	for action in bpy.data.actions:
+		if ActionContainsChannelsForArmature(action, s): # action.groups[0].name == obj.data.name or action.groups[0].name in obj.data.bones: # action == obj.animation_data.action # todo: make sure this is correct
+			result.append(action)
+	return result
+#AddMethod(bpy_types.Object, GetBounds)
+bpy_types.AnimData.GetActions = GetActions'''
 
 # bounds class
 # ==========
