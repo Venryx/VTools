@@ -198,39 +198,6 @@ def bottom(vertices):
 # 3d position/rotation/scale
 # ==========
 
-def getBoneLocalMatrix(poseBoneOrBone, includeBaseMatrix = true, includePoseMatrix = true): # accepts either a pose-bone or a bone
-	poseBone = poseBoneOrBone if type(poseBoneOrBone).__name__ == "PoseBone" else null
-	bone = poseBone.bone if poseBone is not null else poseBoneOrBone
-
-	# get local matrix, using Blender's system
-	# ----------
-	
-	if poseBone is null or not includePoseMatrix:
-		if bone.parent is null:
-			localMatrix = bone.matrix_local
-		else:
-			localMatrix = bone.parent.matrix_local.inverted() * bone.matrix_local
-	else:
-		if bone.parent is null:
-			if not includeBaseMatrix:
-				localMatrix = bone.matrix_local.inverted() * poseBone.matrix
-			else:
-				localMatrix = poseBone.matrix
-		else:
-			if not includeBaseMatrix:
-				#localMatrix = (bone.parent.matrix_local.inverted() * poseBone.parent.matrix).inverted() * (bone.matrix_local.inverted() * poseBone.matrix)
-				localMatrix = (bone.parent.matrix_local.inverted() * bone.matrix_local).inverted() * (poseBone.parent.matrix.inverted() * poseBone.matrix)
-			else:
-				localMatrix = poseBone.parent.matrix.inverted() * poseBone.matrix
-
-	# fix the local matrix, to use the more sensible resting position/orientation (where the rest rotation has the tail-end toward z+, rather than y+)
-	# ----------
-
-	#if bone.parent is null:
-	#	localMatrix = fixMatrixForRootBone(localMatrix)
-
-	return localMatrix
-
 def fixMatrixForRootBone(localMatrix):
 	position, rotation, scale = localMatrix.decompose()
 

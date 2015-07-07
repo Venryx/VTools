@@ -18,7 +18,7 @@ import bmesh
 # animation (dope sheet/graph editor)
 # ==========
 
-def AreKeyframesActive(context):
+def AreKeyframesLoaded(context):
 	"""Used by operators as static method to check if the user selected an object with F-Curves."""
 
 	obj = context.active_object
@@ -79,7 +79,7 @@ class SelectKeyframesInRange(bpy.types.Operator):
 
 	@classmethod
 	def poll(cls, context):
-		return AreKeyframesActive(context)
+		return AreKeyframesLoaded(context)
 	def draw(s, context):
 		layout = s.layout
 
@@ -109,7 +109,7 @@ class CopyKeyframesToNewAction(bpy.types.Operator):
 
 	@classmethod
 	def poll(cls, context):
-		return AreKeyframesActive(context)
+		return AreKeyframesLoaded(context)
 	def execute(self, context):
 		action = context.active_object.animation_data.action
 		newAction = bpy.data.actions.new("NewAction")
@@ -128,6 +128,80 @@ class CopyKeyframesToNewAction(bpy.types.Operator):
 
 		return {"FINISHED"}
 
+class RetargetAction(bpy.types.Operator):
+	bl_idname = "graph.retarget_action"
+	bl_label = "Retarget action"
+	bl_description = "Transforms the action's keyframes to be based-on/relative-to the active-object's armature's rest-pose, rather than the specified source-object's armature's rest-pose."
+	bl_options = {"REGISTER", "UNDO"}
+	bl_space_type = "GRAPH_EDITOR"
+	bl_region_type = "UI"
+
+	sourceObjectName = bpy.props.StringProperty(name = "Source object name")
+
+	@classmethod
+	def poll(cls, context):
+		return AreKeyframesLoaded(context)
+	def execute(self, context):
+		action = context.active_object.animation_data.action
+
+		#enderFrame = int(action.frame_range[1]) + 1
+		#for frame in range(0, enderFrame): # process all frames
+
+		for channelIndex, firstChannel in enumerate(action.fcurves):
+			if firstChannel.array_index is not 0: # only run this process for the first of each channel-group
+				continue
+
+			if len(action.fcurves) > channelIndex + 3 and action.fcurves[channelIndex + 3].array_index == 3: # if channel-group has a fourth item (for a Vector4's "w" component)
+				channels = action.fcurves[channelIndex:channelIndex + 4]
+			else:
+				channels = action.fcurves[channelIndex:channelIndex + 3]
+
+			sourceObj = Obj(self.sourceObjectName)
+			if sourceObj == null:
+				return {"FINISHED"}
+			boneName = firstChannel.data_path[firstChannel.data_path.find("\"") + 1:firstChannel.data_path.rfind("\"")]
+			sourcePoseBone = sourceObj.pose.bones[boneName] #[a for a in sourceObj.pose.bones if a.name == boneName][0]
+			obj = context.active_object
+			poseBone = obj.pose.bones[boneName] #[a for a in obj.pose.bones if a.name == boneName][0]
+
+			#newBoneToBoneMatrix = poseBone.bone.GetMatrix_Object().inverted() * sourcePoseBone.bone.GetMatrix_Object()
+			newBoneToBoneMatrix = poseBone.bone.GetMatrix().inverted() * sourcePoseBone.bone.GetMatrix()
+
+			'''if ".location" in firstChannel.data_path:
+				#channels_matrix = Vector((channels[0], channels[1], channels[2])).to_matrix()
+				channels_matrix = mathutils.Matrix.Translation((channels[0], channels[1], channels[2]))
+			elif ".rotation_quaternion" in firstChannel.data_path:
+				channels_matrix = Quaternion((channels[0], channels[1], channels[2], channels[3])).to_matrix()
+			elif ".scale" in firstChannel.data_path:
+				#channels_matrix = Vector((channels[0], channels[1], channels[2])).to_matrix()
+				channels_matrix = mathutils.Matrix.Scale(1, 4, (channels[0], channels[1], channels[2]))'''
+
+			for i, keyframe_ignored in enumerate(firstChannel.keyframe_points): # assumes that the channel-group's keyframe-points are all aligned on the same x-axis points
+				if ".location" in firstChannel.data_path:
+					vector = Vector((channels[0].keyframe_points[i].co[1], channels[1].keyframe_points[i].co[1], channels[2].keyframe_points[i].co[1]))
+					newVector = newBoneToBoneMatrix * vector
+				elif ".rotation_quaternion" in firstChannel.data_path:
+					vector = Quaternion((channels[0].keyframe_points[i].co[1], channels[1].keyframe_points[i].co[1], channels[2].keyframe_points[i].co[1], channels[3].keyframe_points[i].co[1]))
+					#newVector = newBoneToBoneMatrix * vector
+					vector.rotate(newBoneToBoneMatrix)
+					newVector = vector
+				elif ".scale" in firstChannel.data_path:
+					vector = Vector((channels[0].keyframe_points[i].co[1], channels[1].keyframe_points[i].co[1], channels[2].keyframe_points[i].co[1]))
+					#newVector = newBoneToBoneMatrix * vector
+					newVector = vector # todo: add correct handling for scale
+
+				for i2 in range(0, len(channels)):
+					channel = channels[i2]
+					keyframe = channel.keyframe_points[i]
+					newComp = newVector[i2]
+					compOffset = newComp - keyframe.co.y
+
+					keyframe.co.y += compOffset
+					keyframe.handle_left.y += compOffset
+					keyframe.handle_right.y += compOffset
+
+		return {"FINISHED"}
+
 class MoveKeyframesTo(bpy.types.Operator):
 	bl_idname = "graph.move_keyframes_to"
 	bl_label = "Move keyframes to"
@@ -140,7 +214,7 @@ class MoveKeyframesTo(bpy.types.Operator):
 
 	@classmethod
 	def poll(cls, context):
-		return AreKeyframesActive(context)
+		return AreKeyframesLoaded(context)
 	def execute(self, context):
 		action = context.active_object.animation_data.action
 
@@ -179,7 +253,7 @@ class CopyKeyframesToNewActions(bpy.types.Operator):
 
 	@classmethod
 	def poll(cls, context):
-		return AreKeyframesActive(context)
+		return AreKeyframesLoaded(context)
 	def draw(self, context):
 		layout = self.layout
 

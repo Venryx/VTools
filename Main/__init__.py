@@ -32,16 +32,20 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 # ==========
 
 lastUpdate_area = null
+inPostUpdate = false
 
 import bpy
 import inspect
 from bpy.app.handlers import persistent
 @persistent
 def PostUpdate(scene):
-	global lastUpdate_area
+	global inPostUpdate, lastUpdate_area
+	if inPostUpdate:
+		return
 	if bpy.context.area != lastUpdate_area: # if the active area just changed, ignore this call (handling a switch to a Console panel causes a crash)
 		lastUpdate_area = bpy.context.area
 		return
+	inPostUpdate = true
 
 	if bpy.context.area and bpy.context.area.type == "CONSOLE": # if an area is now active, and that area is a Console panel
 		if PostUpdate in bpy.app.handlers.scene_update_post: # figure out why this is needed
@@ -60,12 +64,14 @@ def PostUpdate(scene):
 				codeStr += "; " + key + " = bpy.VGlobals." + key
 		for propName in ["null", "false", "true"]: # VGlobals: variables (we have to add these manually)
 			codeStr += "; " + propName + " = bpy.VGlobals." + propName
-		bpy.ops.console.clear_line()
+		bpy.ops.console.clear_line() # todo: fix infinite-loop crash from this line (or rather, with the in-post-update fix: fix the code-input-being-blocked issue from this line)
 		bpy.ops.console.insert(text = codeStr)
 		bpy.ops.console.execute()
 		#exec(codeStr)
 
 		#bpy.context.area.type = oldType
+
+	inPostUpdate = false
 if PostUpdate not in bpy.app.handlers.scene_update_post:
 	bpy.app.handlers.scene_update_post.append(PostUpdate)
 

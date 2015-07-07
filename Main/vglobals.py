@@ -178,7 +178,7 @@ def GetDescendents(s):
 bpy_types.Object.GetDescendents = GetDescendents
 
 # AnimData
-# ==========
+# ----------
 
 '''def ActionContainsChannelsForArmature(action, armature):
 	armatureBoneNames = [x.name for x in armature.bones]
@@ -197,7 +197,51 @@ def GetActions(s):
 #AddMethod(bpy_types.Object, GetBounds)
 bpy_types.AnimData.GetActions = GetActions'''
 
-# bounds class
+# Bone
+# ----------
+
+# fix the root-bone matrix, to use the more sensible resting position/orientation (where the rest rotation has the tail-end toward z+, rather than y+)
+#if s.parent is null:
+#	result = fixMatrixForRootBone(result)
+
+def Bone_GetMatrix_Object(s):
+	return s.matrix_local
+bpy_types.Bone.GetMatrix_Object = Bone_GetMatrix_Object
+
+def Bone_GetMatrix(s):
+	result = s.matrix_local # starts out including parent-matrix
+	if s.parent is not null:
+		result = s.parent.matrix_local.inverted() * result
+	return result
+bpy_types.Bone.GetMatrix = Bone_GetMatrix
+
+# PoseBone
+# ----------
+
+# note that, as per V heirarchy/parent-and-unit conceptualization standards, matrix_object does not include base-matrix_object (so it's not in object-space--at least not in-the-same-way/with-the-same-units as, say, vertexes are)
+def PoseBone_GetMatrix_Object(s, addBaseMatrixes = true):
+	baseBone = s.bone
+
+	result = s.matrix # starts out as: base-matrix_object + matrix_object(pose-matrix_object)
+	if not addBaseMatrixes:
+		result = baseBone.matrix_local.inverted() * result
+	
+	return result
+bpy_types.PoseBone.GetMatrix_Object = PoseBone_GetMatrix_Object
+
+def PoseBone_GetMatrix(s, addBaseMatrixes = true):
+	baseBone = s.bone
+
+	result = s.matrix # starts out as: [parent-base-matrix_object + parent-matrix_object] + [base-matrix_object + matrix_object]
+	if s.parent is not null: # remove this part: [parent-base-matrix_object + parent-matrix_object]
+		result = s.parent.GetMatrix_Object().inverted() * result
+	if not addBaseMatrixes: # remove this part: base-matrix_object
+		result = baseBone.GetMatrix_Object().inverted() * s.matrix
+
+	return result
+bpy_types.PoseBone.GetMatrix = PoseBone_GetMatrix
+
+# Box (i.e. bounds) class
 # ==========
 
 RareFloat = -9876.54321
