@@ -2,14 +2,15 @@ from vtools import *
 '''moduleNamesToNiceNames = {"v": "V", "vdebug": "VDebug", "vglobals": "VGlobals", "vtools": "VTools"}
 for name, niceName in enumerate(moduleNamesToNiceNames):
 	exec(niceName + " = " + name)'''
-moduleNiceNames = ["V", "VDebug", "VGlobals", "VTools"]
+moduleNiceNames = ["V", "VDebug", "VClassExtensions", "VGlobals", "VTools"]
 for niceName in moduleNiceNames:
 	if niceName.lower() in locals() or niceName.lower() in globals():
 		exec(niceName + " = " + niceName.lower())
 
-import re
+import bpy
 import math
 from mathutils import *
+import re
 
 # snippets
 # ==========
@@ -23,7 +24,7 @@ null = None
 false = False
 true = True
 
-# V class links
+# Blender: general
 # ==========
 
 def Objects():
@@ -33,10 +34,24 @@ def Obj(name):
 		if obj.name == name:
 			return obj
 	return null
-def Selected():
-	return bpy.context.selected_objects
+def Selected(includeActive = true):
+	result = bpy.context.selected_objects
+	if not includeActive:
+		result = [a for a in result if a != Active()]
+	return result
 def Active():
 	return bpy.context.scene.objects.active
+def SelectedVertexes():
+	return Active().Vertexes().Where("a.select")
+def SelectedVertex():
+	return SelectedVertexes()[0]
+def ActiveVertex():
+	return SelectedVertex()
+
+def SaveMesh():
+	oldMode = bpy.context.object.mode
+	bpy.ops.object.mode_set(mode = "OBJECT")
+	bpy.ops.object.mode_set(mode = oldMode)
 
 def Get3DCursorPosition():
 	return bpy.context.scene.cursor_location
@@ -51,7 +66,7 @@ def Log(message):
 	print(message)
 
 s_defaultNumberTruncate = -1
-def s(obj, numberTruncate = null):
+def S(obj, numberTruncate = null):
 	global s_defaultNumberTruncate
 	numberTruncate = numberTruncate if numberTruncate != null else s_defaultNumberTruncate
 	#if numberTruncate != -1:
@@ -79,17 +94,116 @@ def s(obj, numberTruncate = null):
 			result = "0"
 	elif type(obj) == Vector: #elif obj is Vector:
 		if "z" in obj:
-			result = "[" + s(obj.x, numberTruncate) + " " + s(obj.y, numberTruncate) + " " + s(obj.z, numberTruncate) + "]"
+			result = "[" + S(obj.x, numberTruncate) + " " + S(obj.y, numberTruncate) + " " + S(obj.z, numberTruncate) + "]"
 		else:
-			result = "[" + s(obj.x, numberTruncate) + " " + s(obj.y, numberTruncate) + "]"
+			result = "[" + S(obj.x, numberTruncate) + " " + S(obj.y, numberTruncate) + "]"
 	elif type(obj) == Quaternion:
-		result = "[" + s(obj.x, numberTruncate) + " " + s(obj.y, numberTruncate) + " " + s(obj.z, numberTruncate) + " " + s(obj.w, numberTruncate) + "]"
+		result = "[" + S(obj.x, numberTruncate) + " " + S(obj.y, numberTruncate) + " " + S(obj.z, numberTruncate) + " " + S(obj.w, numberTruncate) + "]"
 	else:
 		result = str(obj)
 	
 	return result
-def st(obj, numberTruncate = null):
-	return s(obj, numberTruncate)
+#def st(obj, numberTruncate = null):
+#	return S(obj, numberTruncate)
+
+# use like this:
+#	bpy_types.Object.PrintXAndY = F("print(str1 + str2)", "str1, str2")
+def F(body, arglistStr = null):
+	if arglistStr is null:
+		arglistStr = "a"
+
+	'''g = {}
+	exec("def anonfunc({0}):\n{1}".format(arglistStr, "\n".join("    {0}".format(line) for line in body.splitlines())), g)
+	return g["anonfunc"]'''
+
+	g = globals()
+	exec("def tempFunc({0}):\n{1}".format(arglistStr, "\n".join("    {0}".format(line) for line in body.splitlines())), g)
+	result = g["tempFunc"]
+	#result = tempFunc
+	#del(tempFunc)
+	return result
+
+def GetCurrentFunction():
+    from inspect import currentframe, getframeinfo
+    frame_back1 = currentframe().f_back
+    func_name = getframeinfo(frame_back1)[2]
+
+    frame_back2 = frame_back1.f_back
+    #from pprint import pprint
+    func = frame_back2.f_locals.get(func_name, frame_back2.f_globals.get(func_name))
+
+    return func
+
+# function helper
+# ==========
+
+import functools
+def CallFuncWithRefToItself(func):
+	@functools.wraps(func)
+	def wrapper(*args, **kwargs):
+		return func(func, *args, **kwargs)
+	wrapper.m = func
+	func.wrapper = wrapper
+	return wrapper
+
+# VWrap
+# ==========
+
+import types
+#class List(types.ListType):
+class List(list):
+	def __getitem__(s, key):
+		#return list.__getitem__(s, key - 1)
+		return super(List, s).__getitem__(key)
+	def __setitem__(s, key, value):
+		return super(List, s).__setitem__(key, value)
+
+	'''def __init__(s, obj):
+		s.obj = obj
+	obj = null'''
+
+	# list
+	def Each(s, func_orFuncStr):
+		#func = func_orFuncStr if type(func_orFuncStr) == types.function else F(func_orFuncStr)
+		func = func_orFuncStr if type(func_orFuncStr) == types.FunctionType else F(func_orFuncStr)
+		for item in s:
+			func(item)
+		return s # for chaining
+	def Where(s, func_orFuncStr):
+		func = func_orFuncStr
+		if type(func_orFuncStr) != types.FunctionType:
+			funcStr = func_orFuncStr
+			if funcStr.count("return ") == 0:
+				funcStr = "return " + funcStr
+			func = F(funcStr)
+		
+		result = List()
+		#if "objData" in s:
+		if hasattr(s, "objData"):
+			result.objData = s.objData
+		if hasattr(s, "mesh"):
+			result.mesh = s.mesh
+		for item in s:
+			if func(item):
+				result.append(item)
+		return result
+
+	# special
+	def SetThenReturn(s, propName, value):
+		exec("s." + propName + " = value")
+		return s
+
+type_copy = type
+def W(obj):
+	#type = globals()["type"](obj)
+	type = type_copy(obj)
+	typeName = type.__name__
+	#if type(obj) == list or type(obj) == bpy.types.bpy_prop_collection or type(obj) == List:
+	#if type == list or type == List or type == bpy_types.bpy_prop_collection:
+	#if type == list or type == List or obj.__getitem__("__iter__") != null:
+	#if type == list or type == List or hasattr(obj, "__iter__"):
+	if hasattr(obj, "__iter__"):
+		return List(obj)
 
 # blender constants/shortcuts
 # ==========
@@ -113,133 +227,6 @@ if PostSceneLoad not in bpy.app.handlers.scene_update_post:
 
 def Any(collection, matchFunc):
 	return len(list(filter(matchFunc, collection))) > 0
-
-# class extensions
-# ==========
-
-def AddMethod(type, method):
-	type[method.__name__] = method
-	del(method)
-
-import bpy_types
-#bpy_types.Object.GetBounds = GetBounds()
-
-# Object
-# ----------
-
-def GetBounds(s):
-	'''result = Box(s.location, s.dimensions)
-	for child in s.children:
-		result = result.Encapsulate(child.GetBounds())
-	return result'''
-	result = Box.Null
-	for corner in s.bound_box:
-		result = result.Encapsulate(s.matrix_world * Vector(corner))
-	return result
-#AddMethod(bpy_types.Object, GetBounds)
-bpy_types.Object.GetBounds = GetBounds
-#del(GetBounds)
-
-def ToLocal(s, pos):
-	return s.matrix_world.inverted() * pos
-bpy_types.Object.ToLocal = ToLocal
-
-def ToWorld(s, pos):
-	return s.matrix_world * pos
-bpy_types.Object.ToWorld = ToWorld
-
-def SetOrigin(s, pos, preserveLinkedCopyFinalTransforms = true):
-	oldCursorPos = bpy.context.scene.cursor_location.copy()
-	bpy.context.scene.cursor_location = s.ToGlobal(pos)
-	bpy.ops.object.origin_set(type = "ORIGIN_CURSOR")
-	bpy.context.scene.cursor_location = oldCursorPos
-
-	if preserveLinkedCopyFinalTransforms:
-		for obj in s.GetLinkedCopies():
-			#obj.location += pos
-			#obj.location = obj.ToWorld(pos)
-			obj.location += (obj.rotation_euler.to_matrix() * pos)
-bpy_types.Object.SetOrigin = SetOrigin
-
-def GetLinkedCopies(s, includeSelf = false):
-	result = []
-	for obj in Objects():
-		if obj.data == s.data and (obj != s or includeSelf):
-				result.append(obj)
-	return result
-bpy_types.Object.GetLinkedCopies = GetLinkedCopies
-
-def GetDescendents(s):
-	result = []
-	for child in s.children:
-		result.append(child)
-		result.extend(child.GetDescendents())
-	return result
-bpy_types.Object.GetDescendents = GetDescendents
-
-# AnimData
-# ----------
-
-'''def ActionContainsChannelsForArmature(action, armature):
-	armatureBoneNames = [x.name for x in armature.bones]
-	for fcurve in action.fcurves:
-		boneName = fcurve.data_path[fcurve.data_path.find('"') + 1:fcurve.data_path.find('"', fcurve.data_path.find('"') + 1)]
-		if boneName in armatureBoneNames:
-			return true
-	return false
-
-def GetActions(s):
-	result = []
-	for action in bpy.data.actions:
-		if ActionContainsChannelsForArmature(action, s): # action.groups[0].name == obj.data.name or action.groups[0].name in obj.data.bones: # action == obj.animation_data.action # todo: make sure this is correct
-			result.append(action)
-	return result
-#AddMethod(bpy_types.Object, GetBounds)
-bpy_types.AnimData.GetActions = GetActions'''
-
-# Bone
-# ----------
-
-# fix the root-bone matrix, to use the more sensible resting position/orientation (where the rest rotation has the tail-end toward z+, rather than y+)
-#if s.parent is null:
-#	result = fixMatrixForRootBone(result)
-
-def Bone_GetMatrix_Object(s):
-	return s.matrix_local
-bpy_types.Bone.GetMatrix_Object = Bone_GetMatrix_Object
-
-def Bone_GetMatrix(s):
-	result = s.matrix_local # starts out including parent-matrix
-	if s.parent is not null:
-		result = s.parent.matrix_local.inverted() * result
-	return result
-bpy_types.Bone.GetMatrix = Bone_GetMatrix
-
-# PoseBone
-# ----------
-
-# note that, as per V heirarchy/parent-and-unit conceptualization standards, matrix_object does not include base-matrix_object (so it's not in object-space--at least not in-the-same-way/with-the-same-units as, say, vertexes are)
-def PoseBone_GetMatrix_Object(s, addBaseMatrixes = true):
-	baseBone = s.bone
-
-	result = s.matrix # starts out as: base-matrix_object + matrix_object(pose-matrix_object)
-	if not addBaseMatrixes:
-		result = baseBone.matrix_local.inverted() * result
-	
-	return result
-bpy_types.PoseBone.GetMatrix_Object = PoseBone_GetMatrix_Object
-
-def PoseBone_GetMatrix(s, addBaseMatrixes = true):
-	baseBone = s.bone
-
-	result = s.matrix # starts out as: [parent-base-matrix_object + parent-matrix_object] + [base-matrix_object + matrix_object]
-	if s.parent is not null: # remove this part: [parent-base-matrix_object + parent-matrix_object]
-		result = s.parent.GetMatrix_Object().inverted() * result
-	if not addBaseMatrixes: # remove this part: base-matrix_object
-		result = baseBone.GetMatrix_Object().inverted() * s.matrix
-
-	return result
-bpy_types.PoseBone.GetMatrix = PoseBone_GetMatrix
 
 # Box (i.e. bounds) class
 # ==========

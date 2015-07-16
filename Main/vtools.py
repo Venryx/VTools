@@ -247,9 +247,9 @@ class CopyKeyframesToNewActions(bpy.types.Operator):
 	start = bpy.props.BoolProperty(default = false)
 
 	for i in range(1, 11):
-		exec("action" + s(i) + "_name = bpy.props.StringProperty(name = \"" + s(i) + ") Name\", default = \"Action " + s(i) + "\")")
-		exec("action" + s(i) + "_firstFrame = bpy.props.IntProperty(name = \"First frame\")")
-		exec("action" + s(i) + "_lastFrame = bpy.props.IntProperty(name = \"Last frame\")")
+		exec("action" + S(i) + "_name = bpy.props.StringProperty(name = \"" + S(i) + ") Name\", default = \"Action " + S(i) + "\")")
+		exec("action" + S(i) + "_firstFrame = bpy.props.IntProperty(name = \"First frame\")")
+		exec("action" + S(i) + "_lastFrame = bpy.props.IntProperty(name = \"Last frame\")")
 
 	@classmethod
 	def poll(cls, context):
@@ -267,22 +267,22 @@ class CopyKeyframesToNewActions(bpy.types.Operator):
 
 		for i in range(1, 11):
 			row = layout.row()
-			row.prop(self.properties, "action" + s(i) + "_name")
+			row.prop(self.properties, "action" + S(i) + "_name")
 
 			row = layout.row()
-			row.prop(self.properties, "action" + s(i) + "_firstFrame")
+			row.prop(self.properties, "action" + S(i) + "_firstFrame")
 
 			row = layout.row()
-			row.prop(self.properties, "action" + s(i) + "_lastFrame")
+			row.prop(self.properties, "action" + S(i) + "_lastFrame")
 	def execute(self, context):
 		if not self.start:
 			return {"FINISHED"}
 
 		action = context.active_object.animation_data.action
 		for i in range(1, 11):
-			name = eval("self.action" + s(i) + "_name")
-			firstFrame = eval("self.action" + s(i) + "_firstFrame")
-			lastFrame = eval("self.action" + s(i) + "_lastFrame")
+			name = eval("self.action" + S(i) + "_name")
+			firstFrame = eval("self.action" + S(i) + "_firstFrame")
+			lastFrame = eval("self.action" + S(i) + "_lastFrame")
 
 			firstKeyframeIndex = 0
 			if self.moveNewActionKeyframesToFrame0:
@@ -308,14 +308,79 @@ class CopyKeyframesToNewActions(bpy.types.Operator):
 # 3d view
 # ==========
 
-class SetOriginTo3DCursor_KeepLinkedObjectPositions(bpy.types.Operator):
+'''class SetOriginTo3DCursor_KeepLinkedObjectPositions(bpy.types.Operator):
 	bl_idname = "view3d.set_origin_to_3d_cursor__keep_linked_object_positions"
 	bl_label = "Set origin to 3D cursor - keep linked object positions"
+	bl_options = {"REGISTER", "UNDO"}
 	@classmethod
 	def poll(cls, context):
-		return context.active_object is not null
+		#return context.active_object is not null
+		return Active() is not null
 	def execute(self, context):
 		# todo
+
+		return {"FINISHED"}'''
+
+class FocusOnSelectedVertexes(bpy.types.Operator):
+	bl_idname = "view3d.focus_on_selected_vertexes"
+	bl_label = "Focus on selected vertexes"
+	bl_options = {"REGISTER", "UNDO"}
+	@classmethod
+	def poll(cls, context):
+		return ActiveVertex() is not null
+	def execute(self, context):
+		oldCursorPos = bpy.context.scene.cursor_location.copy()
+		bpy.ops.view3d.snap_cursor_to_selected()
+		bpy.ops.view3d.view_center_cursor()
+		bpy.context.scene.cursor_location = oldCursorPos
+
+		return {"FINISHED"}
+
+class SetPosition_Local(bpy.types.Operator):
+	bl_idname = "view3d.set_position__local"
+	bl_label = "Set position - local"
+	#bl_description = "Set's the active object's local position to that specified."
+	bl_options = {"REGISTER", "UNDO"}
+	#bl_space_type = "GRAPH_EDITOR"
+	bl_region_type = "UI"
+
+	x = bpy.props.FloatProperty(name="X", description="X component of new local position.")
+	y = bpy.props.FloatProperty(name="Y", description="Y component of new local position.")
+	z = bpy.props.FloatProperty(name="Z", description="Z component of new local position.")
+	moveChildren = bpy.props.BoolProperty(name="Move children", description="Whether to have the active-object's childrens' world-positions change as well.", default=true)
+
+	#childOldWorldPositions = null
+
+	@classmethod
+	def poll(cls, context):
+		return Active() is not null
+	def execute(s, context):
+		obj = Active()
+
+		'''childOldWorldPositions = {}
+		for child in obj.children:
+			childOldWorldPositions[child] = child.location.copy()'''
+		'''if s.childOldWorldPositions == null:
+			s.childOldWorldPositions = {}
+			for child in obj.children:
+				s.childOldWorldPositions[child.name] = child.location.copy()
+				Log("Storing:" + S(s.childOldWorldPositions[child.name]))'''
+
+		#obj.parent.ToLocal(obj.location)
+		offset = Vector((s.x, s.y, s.z)) - obj.matrix_local.decompose()[0]
+		obj.matrix_local *= Matrix.Translation(offset)
+
+		for child in obj.children:
+			#child.matrix_local = child.matrix_local
+			child.location = child.location
+
+		childCounterOffset = -obj.ToLocal(obj.parent.ToWorld(offset))
+		if not s.moveChildren:
+			for child in obj.children:
+				#child.matrix_local *= Matrix.Translation(-offset)
+				'''Log("Loading:" + S(s.childOldWorldPositions[child.name]))
+				child.location = s.childOldWorldPositions[child.name]'''
+				child.location += childCounterOffset
 
 		return {"FINISHED"}
 

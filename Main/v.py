@@ -12,85 +12,27 @@ import bpy
 
 #__import__("code").interact(local={k: v for ns in (globals(), locals()) for k, v in ns.items()})
 
-# console helpers
-# ==========
-
 # general
 # ==========
 
-def indentLines(str, count = 1, indentFirstLine = true):
+def IndentLines(str, count = 1, indentFirstLine = true):
 	for i in range(0, count):
 		if indentFirstLine:
 			str = "\t" + str
 		return re.sub('\n', '\n\t', str)
 
-def toDegrees(radians): #math.degrees
+def ToDegrees(radians): #math.degrees
 	return radians * (180 / math.pi) # radians * degrees-in-a-radian
-def toRadians(degrees): #math.radians
+def ToRadians(degrees): #math.radians
 	return degrees / (180 / math.pi) # degrees / degrees-in-a-radian
 
-def Vector_toDegrees(v):
+def Vector_ToDegrees(v):
 	if len(v) == 3:
 		return Vector((toDegrees(v.x), toDegrees(v.y), toDegrees(v.z))) #return {"x": toDegrees(v.x), "y": toDegrees(v.y), "z": toDegrees(v.z)}
 	else:
-		return  Vector((toDegrees(v.x), toDegrees(v.y), toDegrees(v.z), toDegrees(v.w))) #return {"x": toDegrees(v.x), "y": toDegrees(v.y), "z": toDegrees(v.z), "w": toDegrees(v.w)}
-def Quaternion_toDegrees(q):
+		return Vector((toDegrees(v.x), toDegrees(v.y), toDegrees(v.z), toDegrees(v.w))) #return {"x": toDegrees(v.x), "y": toDegrees(v.y), "z": toDegrees(v.z), "w": toDegrees(v.w)}
+def Quaternion_ToDegrees(q):
 	return Quaternion((toDegrees(q.w), toDegrees(q.x), toDegrees(q.y), toDegrees(q.z)))
-
-'''def matrixParts_toDegrees(pos, rot, scale):
-	return Vector_toDegrees(pos), Quaternion_toDegrees(rot) if type(rot) == Quaternion else Vector_toDegrees(rot), Vector_toDegrees(scale)
-def matrixParts_toRadians(pos, rot, scale):
-	return Vector_toRadians(pos), Quaternion_toRadians(rot) if type(rot) == Quaternion else Vector_toRadians(rot), Vector_toRadians(scale)'''
-
-# use like this:
-#	bpy_types.Object.ToGlobal = F("msg", "print(msg)")
-def F(arglist, body):
-    g = {}
-    exec("def anonfunc({0}):\n{1}".format(arglist, "\n".join("    {0}".format(line) for line in body.splitlines())), g)
-    return g["anonfunc"]
-
-# utils
-# ==========
-
-def veckey3(x,y,z):
-	return round(x, 6), round(y, 6), round(z, 6)
-
-def veckey3d(v):
-	return veckey3(v.x, v.y, v.z)
-
-def veckey2d(v):
-	return round(v[0], 6), round(v[1], 6)
-
-def get_faces(obj):
-	if hasattr(obj, "tessfaces"):
-		return obj.tessfaces
-	else:
-		return obj.faces
-
-def get_normal_indices(v, normals, mesh):
-	n = []
-	mv = mesh.vertices
-
-	for i in v:
-		normal = mv[i].normal
-		key = veckey3d(normal)
-
-		n.append(normals[key])
-
-	return n
-
-def get_color_indices(face_index, colors, mesh):
-	c = []
-	color_layer = mesh.tessface_vertex_colors.active.data
-	face_colors = color_layer[face_index]
-	face_colors = face_colors.color1, face_colors.color2, face_colors.color3, face_colors.color4
-	for i in face_colors:
-		c.append(colors[hexcolor(i)])
-	return c
-
-def rgb2int(rgb):
-	color = (int(rgb[0] * 255) << 16) + (int(rgb[1] * 255) << 8) + int(rgb[2] * 255)
-	return color
 
 # utils - files
 # ==========
@@ -115,102 +57,6 @@ def generate_mesh_filename(meshname, filepath):
 	normpath = os.path.normpath(filepath)
 	path, ext = os.path.splitext(normpath)
 	return "%s.%s%s" % (path, meshname, ext)
-
-# utils - alignment
-# ==========
-
-def bbox(vertices):
-	"""Compute bounding box of vertex array."""
-
-	if len(vertices) > 0:
-		minx = maxx = vertices[0].co.x
-		miny = maxy = vertices[0].co.y
-		minz = maxz = vertices[0].co.z
-
-		for v in vertices[1:]:
-			if v.co.x < minx:
-				minx = v.co.x
-			elif v.co.x > maxx:
-				maxx = v.co.x
-
-			if v.co.y < miny:
-				miny = v.co.y
-			elif v.co.y > maxy:
-				maxy = v.co.y
-
-			if v.co.z < minz:
-				minz = v.co.z
-			elif v.co.z > maxz:
-				maxz = v.co.z
-
-		return { 'x':[minx,maxx], 'y':[miny,maxy], 'z':[minz,maxz] }
-
-	else:
-		return { 'x':[0,0], 'y':[0,0], 'z':[0,0] }
-
-def translate(vertices, t):
-	"""Translate array of vertices by vector t."""
-
-	for i in range(len(vertices)):
-		vertices[i].co.x += t[0]
-		vertices[i].co.y += t[1]
-		vertices[i].co.z += t[2]
-
-def center(vertices):
-	"""Center model (middle of bounding box)."""
-
-	bb = bbox(vertices)
-
-	cx = bb['x'][0] + (bb['x'][1] - bb['x'][0]) / 2.0
-	cy = bb['y'][0] + (bb['y'][1] - bb['y'][0]) / 2.0
-	cz = bb['z'][0] + (bb['z'][1] - bb['z'][0]) / 2.0
-
-	translate(vertices, [-cx,-cy,-cz])
-
-	return [-cx,-cy,-cz]
-
-def top(vertices):
-	"""Align top of the model with the floor (Y-axis) and center it around X and Z."""
-
-	bb = bbox(vertices)
-
-	cx = bb['x'][0] + (bb['x'][1] - bb['x'][0]) / 2.0
-	cy = bb['y'][1]
-	cz = bb['z'][0] + (bb['z'][1] - bb['z'][0]) / 2.0
-
-	translate(vertices, [-cx,-cy,-cz])
-
-	return [-cx,-cy,-cz]
-
-def bottom(vertices):
-	"""Align bottom of the model with the floor (Y-axis) and center it around X and Z."""
-
-	bb = bbox(vertices)
-
-	cx = bb['x'][0] + (bb['x'][1] - bb['x'][0]) / 2.0
-	cy = bb['y'][0]
-	cz = bb['z'][0] + (bb['z'][1] - bb['z'][0]) / 2.0
-
-	translate(vertices, [-cx,-cy,-cz])
-
-	return [-cx,-cy,-cz]
-
-# 3d position/rotation/scale
-# ==========
-
-def fixMatrixForRootBone(localMatrix):
-	position, rotation, scale = localMatrix.decompose()
-
-	'''rotation = Quaternion([.707107, .707107, 0, 0]).rotation_difference(rotation) # w, x, y, z
-	yOld = rotation.y
-	rotation.y = -rotation.z
-	rotation.z = yOld'''
-	# todo; make sure this doesn't mess up the positions/rotations of its descendants (I think it does)
-
-	#rotation = Quaternion([.707107, 0, 0, .707107]).rotation_difference(rotation) # make it be rotated 90 degrees around the y-axis (using Unity's left-hand rule), when imported into Unity
-	#rotation = Quaternion([.707107, 0, 0, -.707107]) * rotation
-	
-	return Matrix.Translation(position) * rotation.to_matrix().to_4x4() * Matrix.Scale(1, 4, scale)
 
 # 3d object creation
 # ==========

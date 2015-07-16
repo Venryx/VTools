@@ -74,7 +74,7 @@ def EndSection(name, mark = false):
 		MarkSection(name)
 
 def MarkSection(name):
-	Log("Section_" + name + ") " + s(sectionTotals[name]) + ", " + s(sectionAddCounts[name]) + " adds")
+	Log("Section_" + name + ") " + S(sectionTotals[name]) + ", " + S(sectionAddCounts[name]) + " adds")
 def MarkSections():
 	for name in sectionAddCounts: # maybe todo: add sorting
 		MarkSection(name)
