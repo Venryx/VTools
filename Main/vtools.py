@@ -160,8 +160,12 @@ class RetargetAction(bpy.types.Operator):
 			if sourceObj == null:
 				return {"FINISHED"}
 			boneName = firstChannel.data_path[firstChannel.data_path.find("\"") + 1:firstChannel.data_path.rfind("\"")]
+			if boneName not in sourceObj.pose.bones: # if bone isn't in source armature, we must have recently added it (and added keyframes for it); just leave its keyframes alone
+				continue
 			sourcePoseBone = sourceObj.pose.bones[boneName] #[a for a in sourceObj.pose.bones if a.name == boneName][0]
 			obj = context.active_object
+			if boneName not in obj.pose.bones: # if bone isn't in selected armature, we must have recently deleted it (but left keyframes for it); just leave its keyframes alone
+				continue
 			poseBone = obj.pose.bones[boneName] #[a for a in obj.pose.bones if a.name == boneName][0]
 
 			#newBoneToBoneMatrix = poseBone.bone.GetMatrix_Object().inverted() * sourcePoseBone.bone.GetMatrix_Object()
@@ -304,6 +308,25 @@ class CopyKeyframesToNewActions(bpy.types.Operator):
 							newKeyframe.handle_right = [keyframe.handle_right.x - firstKeyframeIndex, keyframe.handle_right.y]
 
 		return {"FINISHED"}
+
+'''class DeleteUnusedChannels(bpy.types.Operator):
+	bl_idname = "graph.delete_unused_channels"
+	bl_label = "Delete unused channels"
+	bl_description = "Delete each channel that is not matched by a bone in the active armature."
+	bl_options = {"REGISTER", "UNDO"}
+	bl_space_type = "GRAPH_EDITOR"
+	bl_region_type = "UI"
+
+	@classmethod
+	def poll(cls, context):
+		return AreKeyframesLoaded(context)
+	def execute(self, context):
+		action = context.active_object.animation_data.action
+
+		for channel in action.fcurves:
+			# todo
+
+		return {"FINISHED"}'''
 
 # 3d view
 # ==========
