@@ -23,12 +23,18 @@ def GetBounds(s):
 bpy_types.Object.GetBounds = GetBounds
 #del(GetBounds)
 
-def ToLocal(s, pos):
-	return s.matrix_world.inverted() * pos
+def ToLocal(s, vec, applyTranslations = true):
+	matrix = s.matrix_world.inverted()
+	if not applyTranslations:
+		matrix.translation = Vector((0, 0, 0))
+	return matrix * vec
 bpy_types.Object.ToLocal = ToLocal
 
-def ToWorld(s, pos):
-	return s.matrix_world * pos
+def ToWorld(s, vec, applyTranslations = true):
+	matrix = s.matrix_world
+	if not applyTranslations:
+		matrix.translation = Vector((0, 0, 0))
+	return matrix * vec
 bpy_types.Object.ToWorld = ToWorld
 
 def SetOrigin(s, pos, preserveLinkedCopyFinalTransforms = true):
@@ -76,7 +82,7 @@ bpy_types.Object.Mesh = Mesh
 def Object_Vertexes(s):
 	if s.mode == "EDIT": # this works only in edit mode
 		return BMesh_Vertexes(s.Mesh()).SetThenReturn("objData", s.data)
-	#return W(s.data.vertices)
+	return W(s.data.vertices) if s.data is not null else W([])
 bpy_types.Object.Vertexes = Object_Vertexes
 
 # bmesh

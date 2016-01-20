@@ -42,9 +42,10 @@ def Selected(includeActive = true):
 def Active():
 	return bpy.context.scene.objects.active
 def SelectedVertexes():
-	return Active().Vertexes().Where("a.select")
+	return Active().Vertexes().Where("a.select") #if Active() is not null else []
 def SelectedVertex():
-	return SelectedVertexes()[0]
+	selectedVerts = SelectedVertexes()
+	return selectedVerts[0] if len(selectedVerts) >= 1 else null
 def ActiveVertex():
 	return SelectedVertex()
 

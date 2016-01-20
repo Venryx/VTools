@@ -397,13 +397,71 @@ class SetPosition_Local(bpy.types.Operator):
 			#child.matrix_local = child.matrix_local
 			child.location = child.location
 
-		childCounterOffset = -obj.ToLocal(obj.parent.ToWorld(offset))
+		childCounterOffset = -obj.ToLocal(obj.parent.ToWorld(offset, false), false)
 		if not s.moveChildren:
 			for child in obj.children:
+				#Log("Moving child by:" + S(childCounterOffset))
 				#child.matrix_local *= Matrix.Translation(-offset)
 				'''Log("Loading:" + S(s.childOldWorldPositions[child.name]))
 				child.location = s.childOldWorldPositions[child.name]'''
 				child.location += childCounterOffset
+
+		return {"FINISHED"}
+
+class reset_scale_while_preserving_world_space_mesh(bpy.types.Operator):
+	bl_idname = "view3d.reset_scale_while_preserving_world_space_mesh"
+	bl_label = "Reset scale while preserving world space mesh"
+	#bl_description = "Set's the active object's local position to that specified."
+	bl_options = {"REGISTER", "UNDO"}
+	bl_region_type = "UI"
+
+	@classmethod
+	def poll(cls, context):
+		return Active() is not null
+	def execute(s, context):
+		obj = Active()
+
+		scale = obj.scale
+
+		#vertexes = obj.data.vertices
+		vertexes = obj.Vertexes() # enables it to work in both Object and Edit mode
+		for vertex in vertexes:
+			vertex.co = (vertex.co.x * scale.x, vertex.co.y * scale.y, vertex.co.z * scale.z)
+		#vertexes.SaveMesh()
+
+		obj.scale = Vector((1, 1, 1))
+
+		return {"FINISHED"}
+		
+class separate_islands_into_different_objects(bpy.types.Operator):
+	bl_idname = "view3d.separate_islands_into_different_objects"
+	bl_label = "Separate islands into different objects."
+	#bl_description = "Set's the active object's local position to that specified."
+	bl_options = {"REGISTER", "UNDO"}
+	bl_region_type = "UI"
+
+	@classmethod
+	def poll(cls, context):
+		return Active() is not null
+	def execute(s, context):
+		oldSelectMode = context.tool_settings.mesh_select_mode
+		context.tool_settings.mesh_select_mode = [true, false, false]
+	
+		obj = Active()
+		vertexes = obj.Vertexes() # enables it to work in both Object and Edit mode
+		#runCount = 0
+		#while len(vertexes) > 0 and runCount < 100:
+		while len(vertexes) > 0:
+			vertex = vertexes[0]
+			vertex.select = true
+			bpy.ops.mesh.select_linked()
+			bpy.ops.mesh.separate()
+			
+			SaveMesh()			
+			vertexes = obj.Vertexes()
+			#runCount += 1
+			
+		context.tool_settings.mesh_select_mode = oldSelectMode
 
 		return {"FINISHED"}
 
