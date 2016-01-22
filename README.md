@@ -1,5 +1,5 @@
 # VTools
-Set of Blender tools and operators/functions to speed up various operations/processes.
+Set of Blender functions and operators to speed up various operations/processes.
 
 Functions
 - - - - - - - - - -
