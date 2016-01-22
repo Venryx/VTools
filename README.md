@@ -2,7 +2,7 @@
 Set of Blender tools and operators/functions to speed up various operations/processes.
 
 Here are some of them:
-----------
+- - - - - - - - - -
 
 ##### Select keyframes in range
 
