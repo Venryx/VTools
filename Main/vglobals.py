@@ -48,6 +48,12 @@ def SelectedVertex():
 	return selectedVerts[0] if len(selectedVerts) >= 1 else null
 def ActiveVertex():
 	return SelectedVertex()
+def ActiveBone():
+	if len(Active().data.edit_bones) >= 1:
+		return [a for a in Active().data.edit_bones if a.select or a.select_head or a.select_tail][0]
+	return [a for a in Active().pose.bones if a.bone == Active().data.bones.active][0]
+def ActiveAction():
+	return Active().animation_data.action
 
 def SaveMesh():
 	oldMode = bpy.context.object.mode

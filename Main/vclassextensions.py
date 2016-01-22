@@ -1,6 +1,8 @@
 from vtools import *
 from vtools.vglobals import *
 
+from mathutils import *
+
 import bpy_types
 
 '''def AddMethod(type, method):
@@ -22,6 +24,17 @@ def GetBounds(s):
 #AddMethod(bpy_types.Object, GetBounds)
 bpy_types.Object.GetBounds = GetBounds
 #del(GetBounds)
+
+def GetCorners(s):
+	result = []
+	for corner in s.bound_box:
+		result.append(corner)
+	return result
+bpy_types.Object.GetCorners = GetCorners
+
+def GetLocation(s, global_):
+	return s.matrix_world.decompose()[0] if global_ == true else s.location
+bpy_types.Object.GetLocation = GetLocation
 
 def ToLocal(s, vec, applyTranslations = true):
 	matrix = s.matrix_world.inverted()
@@ -143,6 +156,10 @@ bpy_types.AnimData.GetActions = GetActions'''
 #if s.parent is null:
 #	result = fixMatrixForRootBone(result)
 
+def Bone_GetMatrix_World(s, obj):
+	return obj.matrix_world * s.matrix_local
+bpy_types.Bone.GetMatrix_World = Bone_GetMatrix_World
+
 def Bone_GetMatrix_Object(s):
 	return s.matrix_local
 bpy_types.Bone.GetMatrix_Object = Bone_GetMatrix_Object
@@ -154,8 +171,19 @@ def Bone_GetMatrix(s):
 	return result
 bpy_types.Bone.GetMatrix = Bone_GetMatrix
 
+# EditBone
+# ==========
+
+def EditBone_GetMatrix_World(s, obj):
+	return obj.matrix_world * s.matrix # make-so: this is confirmed to be correct
+bpy_types.EditBone.GetMatrix_World = EditBone_GetMatrix_World
+
 # PoseBone
 # ==========
+
+def PoseBone_GetMatrix_World(s, obj):
+	return obj.matrix_world * s.matrix
+bpy_types.PoseBone.GetMatrix_World = PoseBone_GetMatrix_World
 
 # note that, as per V heirarchy/parent-and-unit conceptualization standards, matrix_object does not include base-matrix_object (so it's not in object-space--at least not in-the-same-way/with-the-same-units as, say, vertexes are)
 def PoseBone_GetMatrix_Object(s, addBaseMatrixes = true):
@@ -179,3 +207,50 @@ def PoseBone_GetMatrix(s, addBaseMatrixes = true):
 
 	return result
 bpy_types.PoseBone.GetMatrix = PoseBone_GetMatrix
+
+# Matrix
+# ==========
+
+def Matrix_NewScale(s, newScale):
+	position, rotation, scale = s.decompose()
+
+	#return Matrix.Translation(position) * rotation.to_matrix().to_4x4() * Matrix.Scale(1, 4, scale)
+	result = s.copy()
+	for i in range(3):
+		#result[i][i] = newScale[i]
+		result[i][i] = scale[i]
+	return result
+
+	#return Matrix.Translation(position) * rotation.to_matrix().to_4x4() * Matrix.Scale(1, 4, newScale)
+#Matrix.NewScale = Matrix_NewScale
+
+def Matrix_MultipliedBy(s, quaternion):
+	quaternion_copy = quaternion.copy()
+	quaternion_copy.rotate(s)
+	return quaternion_copy
+#Matrix.MultipliedBy = Matrix_MultipliedBy
+
+# FCurve
+# ==========
+
+def FCurve_GetBoneName(s):
+	if "[\"" in s.data_path and "\"]." in s.data_path:
+		return v.GetBoneNameFromDataPath(s.data_path)
+	return s.group.name
+bpy.types.FCurve.GetBoneName = FCurve_GetBoneName
+
+def FCurve_GetPropertyName(s):
+	if "[\"" in s.data_path and "\"]." in s.data_path:
+		return v.GetPropertyNameFromDataPath(s.data_path)
+	return s.data_path
+bpy.types.FCurve.GetPropertyName = FCurve_GetPropertyName
+
+# Keyframe
+# ==========
+
+def Keyframe_SetValue(s, value, resetHandles=false):
+	s.co.y = value
+	if resetHandles:
+		s.handle_left = [s.co.x - 3, value]
+		s.handle_right = [s.co.x + 3, value]
+bpy.types.Keyframe.SetValue = Keyframe_SetValue
