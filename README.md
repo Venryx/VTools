@@ -49,7 +49,7 @@ For each curve linked with old-bone-name, relink to new-bone-name.
 
 #### Create merged action from actions
 
-#### Retarget retarget action from object heirarchy to armature
+#### Retarget action from object heirarchy to armature
 Transforms the action's keyframes to be based-on/relative-to the active-object's armature's rest-pose, rather than the specified source-object's rest-pose.
 
 #### Transform action keyframes
