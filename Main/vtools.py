@@ -702,7 +702,7 @@ class create_merged_action_from_actions(bpy.types.Operator):
 
 class retarget_action_from_object_heirarchy_to_armature(bpy.types.Operator):
 	bl_idname = "graph.retarget_action_from_object_heirarchy_to_armature"
-	bl_label = "Retarget retarget action from object heirarchy to armature"
+	bl_label = "Retarget action from object heirarchy to armature"
 	bl_description = "Transforms the action's keyframes to be based-on/relative-to the active-object's armature's rest-pose, rather than the specified source-object's rest-pose."
 	bl_options = {"REGISTER", "UNDO"}
 	bl_space_type = "GRAPH_EDITOR"
