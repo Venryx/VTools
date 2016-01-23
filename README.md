@@ -47,6 +47,9 @@ Converts the active-action's rotation curves from the 3-prop euler type, to the 
 #### Replace action curve bones
 For each curve linked with old-bone-name, relink to new-bone-name.
 
+#### Copy action curves for new bone
+For each selected curve, duplicate curve and link duplicate with new-bone.
+
 #### Create merged action from actions
 
 #### Retarget action from object heirarchy to armature

@@ -217,27 +217,30 @@ class MoveKeyframesTo(bpy.types.Operator):
 	bl_region_type = "UI"
 
 	frame = bpy.props.IntProperty(name="Frame", description="The keyframe-segment's new first-frame. (the frame at which the first-on-x-axis selected-keyframe will be placed)", min = 0, max = 1000, default = 0)
+	onlySelectedCurves = bpy.props.BoolProperty(name="Only selected curves", default=true)
 
 	@classmethod
 	def poll(cls, context):
 		return AreKeyframesLoaded(context)
-	def execute(self, context):
+	def execute(s, context):
 		action = context.active_object.animation_data.action
 
 		firstKeyframeIndex = 5005005
 		for channel in action.fcurves:
-			for keyframe in channel.keyframe_points:
-				if keyframe.select_control_point:
-					firstKeyframeIndex = min(firstKeyframeIndex, keyframe.co.x)
-		offset = self.frame - firstKeyframeIndex
+			if channel.select or not s.onlySelectedCurves:
+				for keyframe in channel.keyframe_points:
+					if keyframe.select_control_point:
+						firstKeyframeIndex = min(firstKeyframeIndex, keyframe.co.x)
+		offset = s.frame - firstKeyframeIndex
 
 		for channel in action.fcurves:
-			for keyframe in channel.keyframe_points:
-				if keyframe.select_control_point:
-					#keyframe.co[0] += offset
-					keyframe.co.x += offset
-					keyframe.handle_left.x += offset
-					keyframe.handle_right.x += offset
+			if channel.select or not s.onlySelectedCurves:
+				for keyframe in channel.keyframe_points:
+					if keyframe.select_control_point:
+						#keyframe.co[0] += offset
+						keyframe.co.x += offset
+						keyframe.handle_left.x += offset
+						keyframe.handle_right.x += offset
 
 		return {"FINISHED"}
 
@@ -619,8 +622,8 @@ class replace_action_curve_bones(bpy.types.Operator):
 	bl_space_type = "GRAPH_EDITOR"
 	bl_region_type = "UI"
 
-	oldBoneName = bpy.props.StringProperty(name = "Old Bone")
-	newBoneName = bpy.props.StringProperty(name = "New Bone")
+	oldBoneName = bpy.props.StringProperty(name = "Old bone")
+	newBoneName = bpy.props.StringProperty(name = "New bone")
 
 	@classmethod
 	def poll(cls, context):
@@ -641,6 +644,34 @@ class replace_action_curve_bones(bpy.types.Operator):
 		for curve in action.fcurves:
 			if v.GetBoneNameFromDataPath(curve.data_path) == s.oldBoneName:
 				curve.data_path = "pose.bones[\"" + s.newBoneName + "\"]." + v.GetPropertyNameFromDataPath(curve.data_path)
+
+		return {"FINISHED"}
+
+class copy_action_curves_for_new_bone(bpy.types.Operator):
+	bl_idname = "graph.copy_action_curves_for_new_bone"
+	bl_label = "Copy action curves for new bone"
+	bl_description = "For each selected curve, duplicate curve and link duplicate with new-bone."
+	bl_options = {"REGISTER", "UNDO"}
+	bl_space_type = "GRAPH_EDITOR"
+	bl_region_type = "UI"
+
+	newBoneName = bpy.props.StringProperty(name = "New bone")
+
+	@classmethod
+	def poll(cls, context):
+		return AreKeyframesLoaded(context)
+	def execute(s, context):
+		if s.newBoneName == "":
+			return {"FINISHED"}
+
+		action = ActiveAction()
+		for curve in action.fcurves:
+			if curve.select:
+				newCurve = action.fcurves.new("pose.bones[\"" + s.newBoneName + "\"]." + curve.GetPropertyName(), curve.array_index, s.newBoneName)
+				for keyframe in curve.keyframe_points:
+					newKeyframe = newCurve.keyframe_points.insert(keyframe.co.x, keyframe.co.y)
+					newKeyframe.handle_left = [keyframe.handle_left.x, keyframe.handle_left.y]
+					newKeyframe.handle_right = [keyframe.handle_right.x, keyframe.handle_right.y]
 
 		return {"FINISHED"}
 
@@ -881,6 +912,7 @@ class transform_action_keyframes(bpy.types.Operator):
 
 	fromObjectName = bpy.props.StringProperty(name = "From object name")
 	toObjectName = bpy.props.StringProperty(name = "To object name")
+	onlySelectedCurves = bpy.props.BoolProperty(name="Only selected curves", default=true)
 
 	@classmethod
 	def poll(cls, context):
@@ -889,7 +921,7 @@ class transform_action_keyframes(bpy.types.Operator):
 		obj = Active()
 		action = ActiveAction()
 		fromObj = Obj(s.fromObjectName)
-		toObj = Obj(s.fromObjectName)
+		toObj = Obj(s.toObjectName)
 		if fromObj == null or toObj == null:
 			return {"FINISHED"}
 
@@ -909,9 +941,12 @@ class transform_action_keyframes(bpy.types.Operator):
 				for i, keyframe in enumerate(channelX.keyframe_points): # assumes that the channel-group's keyframe-points are all aligned on the same x-axis points
 					pos = Vector((channelX.keyframe_points[i].co[1], channelY.keyframe_points[i].co[1], channelZ.keyframe_points[i].co[1]))
 					pos = transformationMatrix * pos
-					channelX.keyframe_points[i].SetValue(pos.x, true)
-					channelY.keyframe_points[i].SetValue(pos.y, true)
-					channelZ.keyframe_points[i].SetValue(pos.z, true)
+					if channelX.select or not s.onlySelectedCurves:
+						channelX.keyframe_points[i].SetValue(pos.x, true)
+					if channelY.select or not s.onlySelectedCurves:
+						channelY.keyframe_points[i].SetValue(pos.y, true)
+					if channelZ.select or not s.onlySelectedCurves:
+						channelZ.keyframe_points[i].SetValue(pos.z, true)
 
 			# transform rotation channels
 			if len([a for a in action.fcurves if a.GetBoneName() == boneName and a.GetPropertyName() == "rotation_quaternion" and a.array_index == 0]) >= 1:
@@ -922,10 +957,14 @@ class transform_action_keyframes(bpy.types.Operator):
 				for i, keyframe in enumerate(channelX.keyframe_points): # assumes that the channel-group's keyframe-points are all aligned on the same x-axis points
 					rotation = Quaternion((channelW.keyframe_points[i].co[1], channelX.keyframe_points[i].co[1], channelY.keyframe_points[i].co[1], channelZ.keyframe_points[i].co[1]))
 					rotation.rotate(transformationMatrix)
-					channelX.keyframe_points[i].SetValue(rotation.x, true)
-					channelY.keyframe_points[i].SetValue(rotation.y, true)
-					channelZ.keyframe_points[i].SetValue(rotation.z, true)
-					channelW.keyframe_points[i].SetValue(rotation.w, true)
+					if channelX.select or not s.onlySelectedCurves:
+						channelX.keyframe_points[i].SetValue(rotation.x, true)
+					if channelY.select or not s.onlySelectedCurves:
+						channelY.keyframe_points[i].SetValue(rotation.y, true)
+					if channelZ.select or not s.onlySelectedCurves:
+						channelZ.keyframe_points[i].SetValue(rotation.z, true)
+					if channelW.select or not s.onlySelectedCurves:
+						channelW.keyframe_points[i].SetValue(rotation.w, true)
 
 			# maybe make-so: scaling gets transformed
 
