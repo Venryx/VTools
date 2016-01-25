@@ -970,6 +970,46 @@ class transform_action_keyframes(bpy.types.Operator):
 
 		return {"FINISHED"}
 
+class set_up_material(bpy.types.Operator):
+	bl_idname = "graph.set_up_material"
+	bl_label = "Set up material"
+	bl_description = "Modifies the active material's nodes to match a given preset."
+	bl_options = {"REGISTER", "UNDO"}
+	bl_space_type = "GRAPH_EDITOR"
+	bl_region_type = "UI"
+
+	cellSize = 200
+
+	@classmethod
+	def poll(cls, context):
+		return ActiveMaterial() is not null
+	def execute(s, context):
+		material = ActiveMaterial()
+
+		tree = material.node_tree
+		nodes = tree.nodes
+		links = tree.links
+
+		# remove all old nodes
+		for node in nodes: # note: the below makes a lot of assumptions about the nodes' configurations and applications
+			material.node_tree.nodes.remove(node)
+
+		# add material output
+		nodeOutput = nodes.new("ShaderNodeOutputMaterial")
+		nodeOutput.location = (0, 0)
+
+		# add diffuse shader, and link
+		nodeDiffuse = nodes.new("ShaderNodeBsdfDiffuse")
+		links.new(nodeDiffuse.outputs[0], nodeOutput.inputs[0])
+		nodeDiffuse.location = (-s.cellSize * 1, 0)
+
+		# add image texture
+		nodeTexture = nodes.new("ShaderNodeTexImage")
+		links.new(nodeTexture.outputs[0], nodeDiffuse.inputs[0])
+		nodeTexture.location = (-s.cellSize * 2, 0)
+
+		return {"FINISHED"}
+
 # registration stuff
 # ==========
 

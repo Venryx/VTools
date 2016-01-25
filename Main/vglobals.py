@@ -53,7 +53,11 @@ def ActiveBone():
 		return [a for a in Active().data.edit_bones if a.select or a.select_head or a.select_tail][0]
 	return [a for a in Active().pose.bones if a.bone == Active().data.bones.active][0]
 def ActiveAction():
-	return Active().animation_data.action
+	return Active().animation_data.action if Active() and Active().animation_data else null
+def ActiveMaterial():
+	return Active().active_material if Active() else null
+def ActiveNode():
+	return [a for a in Active().active_material.node_tree.nodes if a.select][0] if ActiveMaterial() else null
 
 def SaveMesh():
 	oldMode = bpy.context.object.mode
