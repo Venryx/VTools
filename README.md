@@ -12,6 +12,8 @@ Quick-access methods for use in the Python Console:
 * Obj(name): gets the object with the given name
 * Objects(): returns a list of all objects in the scene
 * Selected(): gets the selected object, in Object Mode
+* ActiveMaterial(): gets the active material
+* ActiveNode(): gets the active material's first selected node
 
 Operators
 - - - - - - - - - -
@@ -57,3 +59,6 @@ Transforms the action's keyframes to be based-on/relative-to the active-object's
 
 #### Transform action keyframes
 Transforms the action's keyframes, based on the transformation between from-object and to-object.
+
+#### Set up material
+Modifies the active material's nodes to match a given preset.
