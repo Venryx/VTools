@@ -158,7 +158,7 @@ class RetargetAction(bpy.types.Operator):
 			else:
 				channels = action.fcurves[channelIndex:channelIndex + 3]
 
-			sourceObj = Obj(self.sourceObjectName)
+			sourceObj = Object(self.sourceObjectName)
 			if sourceObj == null:
 				return {"FINISHED"}
 			boneName = firstChannel.data_path[firstChannel.data_path.find("\"") + 1:firstChannel.data_path.rfind("\"")]
@@ -747,7 +747,7 @@ class retarget_action_from_object_heirarchy_to_armature(bpy.types.Operator):
 	def execute(self, context):
 		obj = Active()
 		action = ActiveAction()
-		sourceObj = Obj(self.sourceObjectName)
+		sourceObj = Object(self.sourceObjectName)
 		if sourceObj == null:
 			return {"FINISHED"}
 
@@ -920,8 +920,8 @@ class transform_action_keyframes(bpy.types.Operator):
 	def execute(s, context):
 		obj = Active()
 		action = ActiveAction()
-		fromObj = Obj(s.fromObjectName)
-		toObj = Obj(s.toObjectName)
+		fromObj = Object(s.fromObjectName)
+		toObj = Object(s.toObjectName)
 		if fromObj == null or toObj == null:
 			return {"FINISHED"}
 

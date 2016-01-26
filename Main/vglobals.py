@@ -29,7 +29,7 @@ true = True
 
 def Objects():
 	return bpy.data.objects
-def Obj(name):
+def Object(name):
 	for obj in bpy.data.objects:
 		if obj.name == name:
 			return obj
@@ -58,6 +58,9 @@ def ActiveMaterial():
 	return Active().active_material if Active() else null
 def ActiveNode():
 	return [a for a in Active().active_material.node_tree.nodes if a.select][0] if ActiveMaterial() else null
+
+def Material(name):
+	return W([a for a in bpy.data.materials if a.name == name]).First()
 
 def SaveMesh():
 	oldMode = bpy.context.object.mode

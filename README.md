@@ -9,9 +9,10 @@ Quick-access methods for use in the Python Console:
 * ActiveBone(): gets the active bone of an armature, in either Edit Mode or Pose Mode
 * SelectedVertex()/SelectedVertexes(): gets the active vertex/vertexes, in Edit Mode
 * Get3DCursorPosition(): gets the location of the 3D cursor in world space
-* Obj(name): gets the object with the given name
-* Objects(): returns a list of all objects in the scene
+* Object(name): gets the object with the given name
+* Objects(): gets a list of all objects in the scene
 * Selected(): gets the selected object, in Object Mode
+* Material(): gets the material with the given name
 * ActiveMaterial(): gets the active material
 * ActiveNode(): gets the active material's first selected node
 

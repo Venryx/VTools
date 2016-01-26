@@ -193,6 +193,18 @@ def DeleteObject(obj):
 
     bpy.ops.object.mode_set(mode = 'EDIT')'''
 
+# files
+# ==========
+
+import os
+from os import listdir
+from os.path import isfile, join
+
+def GetFiles(folderPath = "."):
+	return [a for a in listdir(folderPath) if isfile(join(folderPath, a))]
+def RenameFile(oldFilePath, newFilePath):
+	os.rename(oldFilePath, newFilePath)
+
 # others
 # ==========
 

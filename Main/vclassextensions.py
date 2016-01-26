@@ -254,3 +254,12 @@ def Keyframe_SetValue(s, value, resetHandles=false):
 		s.handle_left = [s.co.x - 3, value]
 		s.handle_right = [s.co.x + 3, value]
 bpy.types.Keyframe.SetValue = Keyframe_SetValue
+
+# List
+# ==========
+
+def List_First(s):
+	if len(s) >= 1:
+		return s[0]
+	return null
+List.First = List_First
