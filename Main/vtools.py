@@ -23,7 +23,8 @@ import bmesh
 def AreKeyframesLoaded(context):
 	"""Used by operators as static method to check if the user selected an object with F-Curves."""
 
-	obj = context.active_object
+	#obj = context.active_object
+	obj = Active()
 	fcurves = False
 	if obj:
 		animdata = obj.animation_data
@@ -244,7 +245,7 @@ class MoveKeyframesTo(bpy.types.Operator):
 
 		return {"FINISHED"}
 
-class CopyKeyframesToNewActions(bpy.types.Operator):
+class CopyKeyframesToNewActionsOP(bpy.types.Operator):
 	bl_idname = "graph.copy_keyframes_to_new_actions"
 	bl_label = "Copy keyframes to new actions"
 	#bl_description = ""
@@ -263,56 +264,60 @@ class CopyKeyframesToNewActions(bpy.types.Operator):
 	@classmethod
 	def poll(cls, context):
 		return AreKeyframesLoaded(context)
-	def draw(self, context):
-		layout = self.layout
+	def draw(s, context):
+		layout = s.layout
 
 		row = layout.row()
-		row.prop(self.properties, "moveNewActionKeyframesToFrame0", "Move new action keyframes to frame 0")
+		row.prop(s.properties, "moveNewActionKeyframesToFrame0", "Move new action keyframes to frame 0")
 		layout.separator()
 
 		row = layout.row()
-		row.prop(self.properties, "start", "Start")
+		row.prop(s.properties, "start", "Start")
 		layout.separator()
 
 		for i in range(1, 11):
 			row = layout.row()
-			row.prop(self.properties, "action" + S(i) + "_name")
+			row.prop(s.properties, "action" + S(i) + "_name")
 
 			row = layout.row()
-			row.prop(self.properties, "action" + S(i) + "_firstFrame")
+			row.prop(s.properties, "action" + S(i) + "_firstFrame")
 
 			row = layout.row()
-			row.prop(self.properties, "action" + S(i) + "_lastFrame")
-	def execute(self, context):
-		if not self.start:
+			row.prop(s.properties, "action" + S(i) + "_lastFrame")
+	def execute(s, context):
+		if not s.start:
 			return {"FINISHED"}
 
-		action = context.active_object.animation_data.action
+		newActionInfos = []
 		for i in range(1, 11):
-			name = eval("self.action" + S(i) + "_name")
-			firstFrame = eval("self.action" + S(i) + "_firstFrame")
-			lastFrame = eval("self.action" + S(i) + "_lastFrame")
-
-			firstKeyframeIndex = 0
-			if self.moveNewActionKeyframesToFrame0:
-				firstKeyframeIndex = 5005005
-				for channel in action.fcurves:
-					for keyframe in channel.keyframe_points:
-						if keyframe.co.x >= firstFrame and keyframe.co.x <= lastFrame:
-							firstKeyframeIndex = min(firstKeyframeIndex, keyframe.co.x)
-
-			if lastFrame - firstFrame > 0:
-				newAction = bpy.data.actions.new(name)
-				newAction.use_fake_user = true
-				for channel in action.fcurves:
-					newChannel = newAction.fcurves.new(channel.data_path, channel.array_index, channel.group.name)
-					for keyframe in channel.keyframe_points:
-						if keyframe.co.x >= firstFrame and keyframe.co.x <= lastFrame:
-							newKeyframe = newChannel.keyframe_points.insert(keyframe.co.x - firstKeyframeIndex, keyframe.co.y)
-							newKeyframe.handle_left = [keyframe.handle_left.x - firstKeyframeIndex, keyframe.handle_left.y]
-							newKeyframe.handle_right = [keyframe.handle_right.x - firstKeyframeIndex, keyframe.handle_right.y]
+			newActionInfos.append(O({
+				"name": eval("s.action" + S(i) + "_name"),
+				"firstFrame": eval("s.action" + S(i) + "_firstFrame"),
+				"lastFrame": eval("s.action" + S(i) + "_lastFrame")
+			}))
+		CopyKeyframesToNewActions(Active().animation_data.action, newActionInfos, s.moveNewActionKeyframesToFrame0)
 
 		return {"FINISHED"}
+def CopyKeyframesToNewActions(sourceAction, newActionInfos, moveNewActionKeyframesToFrame0):
+	for newActionInfo in newActionInfos:
+		firstKeyframeIndex = 0
+		if moveNewActionKeyframesToFrame0:
+			firstKeyframeIndex = 5005005
+			for channel in sourceAction.fcurves:
+				for keyframe in channel.keyframe_points:
+					if keyframe.co.x >= newActionInfo.firstFrame and keyframe.co.x <= newActionInfo.lastFrame:
+						firstKeyframeIndex = min(firstKeyframeIndex, keyframe.co.x)
+
+		if newActionInfo.lastFrame - newActionInfo.firstFrame > 0:
+			newAction = bpy.data.actions.new(newActionInfo.name)
+			newAction.use_fake_user = true
+			for channel in sourceAction.fcurves:
+				newChannel = newAction.fcurves.new(channel.data_path, channel.array_index, channel.group.name)
+				for keyframe in channel.keyframe_points:
+					if keyframe.co.x >= newActionInfo.firstFrame and keyframe.co.x <= newActionInfo.lastFrame:
+						newKeyframe = newChannel.keyframe_points.insert(keyframe.co.x - firstKeyframeIndex, keyframe.co.y)
+						newKeyframe.handle_left = [keyframe.handle_left.x - firstKeyframeIndex, keyframe.handle_left.y]
+						newKeyframe.handle_right = [keyframe.handle_right.x - firstKeyframeIndex, keyframe.handle_right.y]
 
 '''class DeleteUnusedChannels(bpy.types.Operator):
 	bl_idname = "graph.delete_unused_channels"
@@ -437,7 +442,7 @@ class reset_scale_while_preserving_world_space_mesh(bpy.types.Operator):
 		obj.scale = Vector((1, 1, 1))
 
 		return {"FINISHED"}
-		
+
 class separate_islands_into_different_objects(bpy.types.Operator):
 	bl_idname = "view3d.separate_islands_into_different_objects"
 	bl_label = "Separate islands into different objects"
@@ -451,7 +456,7 @@ class separate_islands_into_different_objects(bpy.types.Operator):
 	def execute(s, context):
 		oldSelectMode = context.tool_settings.mesh_select_mode
 		context.tool_settings.mesh_select_mode = [true, false, false]
-	
+
 		obj = Active()
 		vertexes = obj.Vertexes() # enables it to work in both Object and Edit mode
 		#runCount = 0
@@ -461,11 +466,11 @@ class separate_islands_into_different_objects(bpy.types.Operator):
 			vertex.select = true
 			bpy.ops.mesh.select_linked()
 			bpy.ops.mesh.separate()
-			
-			SaveMesh()			
+
+			SaveMesh()
 			vertexes = obj.Vertexes()
 			#runCount += 1
-			
+
 		context.tool_settings.mesh_select_mode = oldSelectMode
 
 		return {"FINISHED"}
@@ -481,7 +486,7 @@ class create_armature_from_object_heirarchy(bpy.types.Operator):
 		return Active() is not null
 	def execute(s, context):
 		obj = Active()
-		
+
 		# create armature and object
 		bpy.ops.object.add(type="ARMATURE", enter_editmode=True, location=obj.location)
 		armatureObj = bpy.context.object
@@ -496,7 +501,7 @@ class create_armature_from_object_heirarchy(bpy.types.Operator):
 		rootBone = armature.edit_bones.new("RequiredYetUnusedRootBone")
 		create_armature_from_object_heirarchy.AddBonesFromObjectHeirarchy(obj, armature, rootBone, [obj])
 		bpy.ops.object.mode_set(mode="OBJECT")
-		
+
 		return {"FINISHED"}
 
 	def AddBonesFromObjectHeirarchy(rootObj, armature, parent, objects):
@@ -512,7 +517,7 @@ class create_armature_from_object_heirarchy(bpy.types.Operator):
 				#bone.head = parent.tail
 				#bone.head = obj.location * obj.parent.scale
 				bone.head = obj.location * Matrix.Scale(1, 4, obj.parent.scale)
-				
+
 				#bone.use_connect = false
 				#(trans, rot, scale) = parent.matrix.decompose()
 				#(trans, rot, scale) = obj.matrix_local.decompose()
@@ -600,7 +605,7 @@ class convert_action_rotation_curves_to_quaternion_type(bpy.types.Operator):
 			newRotationChannel_y = action.fcurves.new("pose.bones[\"" + boneName + "\"].rotation_quaternion", 2, boneName)
 			newRotationChannel_z = action.fcurves.new("pose.bones[\"" + boneName + "\"].rotation_quaternion", 3, boneName)
 			newRotationChannel_w = action.fcurves.new("pose.bones[\"" + boneName + "\"].rotation_quaternion", 0, boneName) # the array_index for w is 0
-			
+
 			for i, keyframe in enumerate(rotationChannel_x.keyframe_points): # assumes that the channel-group's keyframe-points are all aligned on the same x-axis points
 				rotation = Euler((rotationChannel_x.keyframe_points[i].co[1], rotationChannel_y.keyframe_points[i].co[1], rotationChannel_z.keyframe_points[i].co[1]), "XYZ").to_quaternion()
 				newKeyframeX = newRotationChannel_x.keyframe_points.insert(keyframe.co.x, rotation.x)
@@ -731,10 +736,10 @@ class create_merged_action_from_actions(bpy.types.Operator):
 
 		return {"FINISHED"}
 
-class retarget_action_from_object_heirarchy_to_armature(bpy.types.Operator):
-	bl_idname = "graph.retarget_action_from_object_heirarchy_to_armature"
-	bl_label = "Retarget action from object heirarchy to armature"
-	bl_description = "Transforms the action's keyframes to be based-on/relative-to the active-object's armature's rest-pose, rather than the specified source-object's rest-pose."
+class RetargetAction_V2(bpy.types.Operator):
+	bl_idname = "graph.retarget_action_v2"
+	bl_label = "Retarget action from object-heirarchy/armature to object-heirarchy/armature"
+	bl_description = "Transforms the action's keyframes to be based-on/relative-to the active-object's rest-pose, rather than the specified source-object's rest-pose."
 	bl_options = {"REGISTER", "UNDO"}
 	bl_space_type = "GRAPH_EDITOR"
 	bl_region_type = "UI"
@@ -744,10 +749,10 @@ class retarget_action_from_object_heirarchy_to_armature(bpy.types.Operator):
 	@classmethod
 	def poll(cls, context):
 		return AreKeyframesLoaded(context)
-	def execute(self, context):
-		obj = Active()
+	def execute(s, context):
 		action = ActiveAction()
-		sourceObj = Object(self.sourceObjectName)
+		sourceObj = Object(s.sourceObjectName)
+		toObj = Active()
 		if sourceObj == null:
 			return {"FINISHED"}
 
@@ -762,15 +767,15 @@ class retarget_action_from_object_heirarchy_to_armature(bpy.types.Operator):
 
 			#boneName = firstChannel.data_path[firstChannel.data_path.find("\"") + 1:firstChannel.data_path.rfind("\"")]
 			boneName = firstChannel.group.name
-			
+
 			if len([a for a in sourceObj.GetDescendents() if a.name == boneName]) == 0:
 				raise ValueError("Couldn't find source-bone-obj with name: " + boneName)
 			sourceBone = [a for a in sourceObj.GetDescendents() if a.name == boneName][0]
 
-			obj = context.active_object
-			if boneName not in obj.pose.bones: # if bone isn't in selected armature, we must have recently deleted it (but left keyframes for it); just leave its keyframes alone
+			toObj = context.active_object
+			if boneName not in toObj.pose.bones: # if bone isn't in selected armature, we must have recently deleted it (but left keyframes for it); just leave its keyframes alone
 				continue
-			poseBone = obj.pose.bones[boneName] #[a for a in obj.pose.bones if a.name == boneName][0]
+			poseBone = toObj.pose.bones[boneName] #[a for a in toObj.pose.bones if a.name == boneName][0]
 
 			#newBoneToBoneMatrix = poseBone.bone.GetMatrix_Object().inverted() * sourcePoseBone.bone.GetMatrix_Object()
 			#newBoneToBoneMatrix = poseBone.bone.GetMatrix().inverted() * sourcePoseBone.bone.GetMatrix()
@@ -811,19 +816,30 @@ class retarget_action_from_object_heirarchy_to_armature(bpy.types.Operator):
 
 		curvesToModify_bones = []
 		for curve in action.fcurves:
-			# (if bone isn't in selected armature, we must have recently deleted it (but left keyframes for it); just ignore its curve)
-			if curve.GetBoneName() in obj.pose.bones and curve.GetBoneName() not in curvesToModify_bones:
-				curvesToModify_bones.append(curve.GetBoneName())
+			boneName = curve.GetBoneName()
+			if boneName in curvesToModify_bones: # if already in list, don't add again
+				continue
+
+			# if curve's bone isn't in source-obj, ignore the curve (we must have recently deleted the bone, but left keyframes for it)
+			if (sourceObj.pose == null and len([a for a in sourceObj.GetDescendents() if a.name == boneName]) == 0) or (sourceObj.pose != null and curve.GetBoneName() not in sourceObj.pose.bones):
+				continue
+			# if curve's bone isn't in to-obj, ignore the curve (we must have recently deleted the bone, but left keyframes for it)
+			if (toObj.pose == null and len([a for a in toObj.GetDescendents() if a.name == boneName]) == 0) or (toObj.pose != null and curve.GetBoneName() not in toObj.pose.bones):
+				continue
+
+			curvesToModify_bones.append(curve.GetBoneName())
 		for boneName in curvesToModify_bones:
-			if len([a for a in sourceObj.GetDescendents() if a.name == boneName]) == 0:
-				raise ValueError("Couldn't find source-bone-obj with name: " + boneName)
-			sourceBone = [a for a in sourceObj.GetDescendents() if a.name == boneName][0]
-			bone = obj.pose.bones[boneName]
-			#sourceObjSpaceToObjSpaceMatrix = Quaternion([.707107, 0, 0, -.707107]).inverted().to_matrix().to_4x4() * (sourceObj.matrix_world.inverted() * sourceBone.matrix_world).inverted() * bone.bone.GetMatrix()
-			#sourceObjSpaceToObjSpaceMatrix = sourceObj.matrix_world.inverted() * bone.bone.GetMatrix_World(obj)
-			#sourceBoneSpaceToBoneSpaceMatrix = sourceBone.matrix_world.inverted() * bone.bone.GetMatrix_World(obj)
-			#transformationMatrix = sourceObj.matrix_world.inverted() * bone.bone.GetMatrix_Object(obj)
-			transformationMatrix = sourceBone.parent.matrix_world.inverted() * bone.bone.GetMatrix_World(obj)
+			'''if len([a for a in sourceObj.GetDescendents() if a.name == boneName]) == 0:
+				raise ValueError("Couldn't find source-bone-obj with name: " + boneName)'''
+			sourceBone = [a for a in sourceObj.GetDescendents() if a.name == boneName][0] if sourceObj.pose == null else sourceObj.pose.bones[boneName]
+			toBone = [a for a in toObj.GetDescendents() if a.name == boneName][0] if toObj.pose == null else toObj.pose.bones[boneName]
+			#sourceObjSpaceToObjSpaceMatrix = Quaternion([.707107, 0, 0, -.707107]).inverted().to_matrix().to_4x4() * (sourceObj.matrix_world.inverted() * sourceBone.matrix_world).inverted() * toBone.bone.GetMatrix()
+			#sourceObjSpaceToObjSpaceMatrix = sourceObj.matrix_world.inverted() * toBone.bone.GetMatrix_World(toObj)
+			#sourceBoneSpaceToBoneSpaceMatrix = sourceBone.matrix_world.inverted() * toBone.bone.GetMatrix_World(toObj)
+			#transformationMatrix = sourceObj.matrix_world.inverted() * toBone.bone.GetMatrix_Object(toObj)
+			sourceBoneMatrix = sourceBone.parent.matrix_world if sourceObj.pose == null else sourceBone.bone.GetMatrix_World(sourceObj)
+			toBoneMatrix = toBone.parent.matrix_world if toObj.pose == null else toBone.bone.GetMatrix_World(toObj)
+			transformationMatrix = sourceBoneMatrix.inverted() * toBoneMatrix
 
 			# transform position channels
 			if len([a for a in action.fcurves if a.GetBoneName() == boneName and a.GetPropertyName() == "rotation_quaternion" and a.array_index == 0]) >= 1:
@@ -833,20 +849,20 @@ class retarget_action_from_object_heirarchy_to_armature(bpy.types.Operator):
 				for i, keyframe in enumerate(channelX.keyframe_points): # assumes that the channel-group's keyframe-points are all aligned on the same x-axis points
 					'''pos = Vector((channelX.keyframe_points[i].co[1], channelY.keyframe_points[i].co[1], channelZ.keyframe_points[i].co[1]))
 					pos = transformationMatrix * pos'''
-					pos_world = sourceBone.parent.matrix_world * Vector((channelX.keyframe_points[i].co[1], channelY.keyframe_points[i].co[1], channelZ.keyframe_points[i].co[1]))
+					pos_world = sourceBoneMatrix * Vector((channelX.keyframe_points[i].co[1], channelY.keyframe_points[i].co[1], channelZ.keyframe_points[i].co[1]))
 					#pos_delta = sourceBone.matrix_world.inverted() * pos_world # remember, 'pos for-pose-bone' is actually: the pos delta, from the 'rest pos' (of sourceBone.matrix_world)
-				
+
 					# for testing
 					#pos_delta = Vector((0, 0, 0))
 
 					#pos_delta_forPoseBone = pos_delta
-					#pos_forPoseBone = bone.bone.GetMatrix_World(obj).inverted() * pos_delta
-					#pos_forPoseBone = obj.matrix_world.inverted() * pos_delta
-					#pos_delta_forPoseBone = bone.bone.GetMatrix_World(obj).inverted() * pos_delta
-					#pos_delta_forPoseBone = obj.matrix_world.inverted() * pos_delta
-					#pos_delta_forPoseBone = (obj.matrix_world.inverted() * pos_delta) - (obj.matrix_world.inverted() * Vector((0, 0, 0)))
+					#pos_forPoseBone = toBone.bone.GetMatrix_World(toObj).inverted() * pos_delta
+					#pos_forPoseBone = toObj.matrix_world.inverted() * pos_delta
+					#pos_delta_forPoseBone = toBone.bone.GetMatrix_World(toObj).inverted() * pos_delta
+					#pos_delta_forPoseBone = toObj.matrix_world.inverted() * pos_delta
+					#pos_delta_forPoseBone = (toObj.matrix_world.inverted() * pos_delta) - (toObj.matrix_world.inverted() * Vector((0, 0, 0)))
 
-					worldToForPoseBone = bone.bone.GetMatrix_World(obj).inverted()
+					worldToForPoseBone = toBoneMatrix.inverted()
 					pos_forPoseBone = worldToForPoseBone * pos_world
 
 					channelX.keyframe_points[i].SetValue(pos_forPoseBone.x, true)
@@ -862,12 +878,12 @@ class retarget_action_from_object_heirarchy_to_armature(bpy.types.Operator):
 				for i, keyframe in enumerate(channelX.keyframe_points): # assumes that the channel-group's keyframe-points are all aligned on the same x-axis points
 					'''rotation = Quaternion((channelW.keyframe_points[i].co[1], channelX.keyframe_points[i].co[1], channelY.keyframe_points[i].co[1], channelZ.keyframe_points[i].co[1]))
 					rotation.rotate(transformationMatrix)'''
-					#rotation_world = sourceBone.parent.matrix_world * Quaternion((channelW.keyframe_points[i].co[1], channelX.keyframe_points[i].co[1], channelY.keyframe_points[i].co[1], channelZ.keyframe_points[i].co[1]))
+					#rotation_world = sourceBoneMatrix * Quaternion((channelW.keyframe_points[i].co[1], channelX.keyframe_points[i].co[1], channelY.keyframe_points[i].co[1], channelZ.keyframe_points[i].co[1]))
 					rotation_world = Quaternion((channelW.keyframe_points[i].co[1], channelX.keyframe_points[i].co[1], channelY.keyframe_points[i].co[1], channelZ.keyframe_points[i].co[1]))
-					rotation_world.rotate(sourceBone.parent.matrix_world)
+					rotation_world.rotate(sourceBoneMatrix)
 					#rotation_delta = rotation_world
 					#rotation_delta.rotate(sourceBone.matrix_world.inverted()) # remember, 'rotation for-pose-bone' is actually: the rotation delta, from the 'rest rotation' (of sourceBone.matrix_world)
-					
+
 					# for testing
 					#rotation_delta = Quaternion((1, 0, 0, 0))
 					#rotation_delta = Quaternion((.7, -.7, 0, 0))
@@ -876,19 +892,19 @@ class retarget_action_from_object_heirarchy_to_armature(bpy.types.Operator):
 					# rotation_world: Quaternion((.7, .7, 0, 0))
 					# rotation_worldToTarget: Quaternion((.5, -.5, .5, .5))
 					# rotation_target: Quaternion((.7, 0, 0, .7))
-					
+
 					#rotation_delta_forPoseBone = rotation_delta
-					#rotation_forPoseBone.rotate(bone.bone.GetMatrix_World(obj).inverted())
-					#rotation_forPoseBone.rotate(obj.matrix_world.inverted())
-					#rotation_delta_forPoseBone.rotate(bone.bone.GetMatrix_World(obj).inverted())
-					#rotation_delta_forPoseBone.rotate(obj.matrix_world.inverted())
-					#rotation_delta_forPoseBone.rotate(obj.matrix_world.inverted())
-					#rotation_delta_forPoseBone.rotate(Matrix_MultipliedBy(obj.matrix_world.inverted(), Quaternion((1, 0, 0, 0))).inverted())
-					#rotation_delta_forPoseBone.rotate(obj.matrix_world.inverted())
-					#rotation_delta_forPoseBone.rotate(Matrix_MultipliedBy(obj.matrix_world.inverted(), Quaternion((1, 0, 0, 0))).inverted())
+					#rotation_forPoseBone.rotate(toBone.bone.GetMatrix_World(toObj).inverted())
+					#rotation_forPoseBone.rotate(toObj.matrix_world.inverted())
+					#rotation_delta_forPoseBone.rotate(toBone.bone.GetMatrix_World(toObj).inverted())
+					#rotation_delta_forPoseBone.rotate(toObj.matrix_world.inverted())
+					#rotation_delta_forPoseBone.rotate(toObj.matrix_world.inverted())
+					#rotation_delta_forPoseBone.rotate(Matrix_MultipliedBy(toObj.matrix_world.inverted(), Quaternion((1, 0, 0, 0))).inverted())
+					#rotation_delta_forPoseBone.rotate(toObj.matrix_world.inverted())
+					#rotation_delta_forPoseBone.rotate(Matrix_MultipliedBy(toObj.matrix_world.inverted(), Quaternion((1, 0, 0, 0))).inverted())
 
 					rotation_forPoseBone = rotation_world.copy()
-					worldToForPoseBone = (Quaternion([.707107, -.707107, 0, 0]).inverted().to_matrix().to_4x4() * bone.bone.GetMatrix_World(obj)).inverted().decompose()[1]
+					worldToForPoseBone = (Quaternion([.707107, -.707107, 0, 0]).inverted().to_matrix().to_4x4() * toBoneMatrix).inverted().decompose()[1]
 					#worldToForPoseBone.x *= -1
 					#worldToForPoseBone.y *= -1
 					rotation_forPoseBone.rotate(worldToForPoseBone)
@@ -929,8 +945,7 @@ class transform_action_keyframes(bpy.types.Operator):
 
 		curvesToModify_bones = []
 		for curve in action.fcurves:
-			# (if bone isn't in selected armature, we must have recently deleted it (but left keyframes for it); just ignore its curve)
-			if curve.GetBoneName() in obj.pose.bones and curve.GetBoneName() not in curvesToModify_bones:
+			if curve.GetBoneName() not in curvesToModify_bones:
 				curvesToModify_bones.append(curve.GetBoneName())
 		for boneName in curvesToModify_bones:
 			# transform position channels
@@ -969,6 +984,157 @@ class transform_action_keyframes(bpy.types.Operator):
 			# maybe make-so: scaling gets transformed
 
 		return {"FINISHED"}
+
+class constrain_armature_bones_to_bones_of_another(bpy.types.Operator):
+	bl_idname = "graph.constrain_armature_bones_to_bones_of_another"
+	bl_label = "Constrain armature bones to bones of another"
+	#bl_description = "Creates bone constraints"
+	bl_options = {"REGISTER", "UNDO"}
+	bl_space_type = "GRAPH_EDITOR"
+	bl_region_type = "UI"
+
+	fromObjectName = bpy.props.StringProperty(name = "From object name")
+	toObjectName = bpy.props.StringProperty(name = "To object name")
+
+	@classmethod
+	def poll(cls, context):
+		return AreKeyframesLoaded(context)
+	def execute(s, context):
+		ConstrainArmatureBonesToBonesOfAnother(s.fromObjectName, s.toObjectName)
+		return {"FINISHED"}
+def ConstrainArmatureBonesToBonesOfAnother(fromArmatureObjName, toArmatureObjName, bonesToIgnore = []):
+	fromObj = Object(fromArmatureObjName)
+	toObj = Object(toArmatureObjName)
+	if fromObj == null or toObj == null:
+		return {"FINISHED"}
+	'''fromArmature = fromObj.data
+	toArmature = toObj.data
+	if fromArmature == null or toArmature == null:
+		return {"FINISHED"}'''
+	fromPose = fromObj.pose
+	toPose = toObj.pose
+	if fromPose == null or toPose == null:
+		return {"FINISHED"}
+
+	for fromBone in fromPose.bones:
+		toBone = toPose.bones[fromBone.name]
+		Log(fromBone.name)
+		copyLoc = toBone.constraints.new("COPY_LOCATION")
+		copyLoc.target = fromObj
+		copyLoc.subtarget = fromBone.name
+		copyRot = toBone.constraints.new("COPY_ROTATION")
+		copyRot.target = fromObj
+		copyRot.subtarget = fromBone.name
+		copyScale = toBone.constraints.new("COPY_SCALE")
+		copyScale.target = fromObj
+		copyScale.subtarget = fromBone.name
+
+'''class bake_action(bpy.types.Operator):
+	bl_idname = "graph.bake_action"
+	bl_label = "Bake an action, using the transform of the active object over time"
+	#bl_description = "Creates bone constraints"
+	bl_options = {"REGISTER", "UNDO"}
+	bl_space_type = "GRAPH_EDITOR"
+	bl_region_type = "UI"
+
+	limitFrames = bpy.props.BoolProperty(name="Limit frames to those in...", default=true)
+	limitFrames_actionName = bpy.props.StringProperty(name = "...action named")
+
+	@classmethod
+	def poll(cls, context):
+		return AreKeyframesLoaded(context)
+	def execute(s, context):
+		BakeAction(s.limitFrames, s.limitFrames_actionName)
+		return {"FINISHED"}
+def BakeAction(limitFrames, limitFrames_actionName):
+	obj = Active()
+
+	for fromBone in fromPose.bones:
+		toBone = toPose.bones[fromBone.name]
+		Log(fromBone.name)
+		copyLoc = toBone.constraints.new("COPY_LOCATION")
+		copyLoc.target = fromObj
+		copyLoc.subtarget = fromBone.name
+		copyRot = toBone.constraints.new("COPY_ROTATION")
+		copyRot.target = fromObj
+		copyRot.subtarget = fromBone.name
+		copyScale = toBone.constraints.new("COPY_SCALE")
+		copyScale.target = fromObj
+		copyScale.subtarget = fromBone.name'''
+
+class select_keyframes_for_keyframed_frames_in_action_x(bpy.types.Operator):
+	bl_idname = "graph.select_keyframes_for_keyframed_framed_in_action_x"
+	bl_label = "Select keyframes for keyframed-frames in action x"
+	#bl_description = "Creates bone constraints"
+	bl_options = {"REGISTER", "UNDO"}
+	bl_space_type = "GRAPH_EDITOR"
+	bl_region_type = "UI"
+
+	actionName = bpy.props.StringProperty(name = "Action X")
+	onlySelectedKeyframes = bpy.props.BoolProperty(name="Only selected keyframes", default=false)
+
+	@classmethod
+	def poll(cls, context):
+		return AreKeyframesLoaded(context)
+	def execute(s, context):
+		SelectKeyframesAlsoPresentInActionX(s.actionName, s.onlySelectedKeyframes)
+		return {"FINISHED"}
+def SelectKeyframesAlsoPresentInActionX(xActionName, onlySelectedKeyframes):
+	if xActionName not in bpy.data.actions:
+		return
+	fromAction = bpy.data.actions[xActionName]
+	toAction = ActiveAction()
+
+	framesInFromAction = {}
+	for channel in fromAction.fcurves:
+		for keyframe in channel.keyframe_points:
+			if keyframe.select_control_point or not onlySelectedKeyframes:
+				framesInFromAction[int(keyframe.co.x)] = true
+
+	for channel in toAction.fcurves:
+		for keyframe in channel.keyframe_points:
+			if int(keyframe.co.x) in framesInFromAction:
+				keyframe.select_control_point = true
+
+class delete_active_action(bpy.types.Operator):
+	bl_idname = "graph.delete_active_action"
+	bl_label = "Delete active action"
+	bl_options = {"REGISTER", "UNDO"}
+	bl_space_type = "GRAPH_EDITOR"
+	bl_region_type = "UI"
+
+	@classmethod
+	def poll(cls, context):
+		return ActiveAction()
+	def execute(s, context):
+		action = ActiveAction()
+		Active().animation_data.action = null
+		action.use_fake_user = false
+		DeleteAction(action.name)
+		return {"FINISHED"}
+def DeleteAction(actionName):
+	action = bpy.data.actions[actionName]
+	bpy.data.actions.remove(action)
+
+class delete_bone_constraints(bpy.types.Operator):
+	bl_idname = "graph.delete_bone_constraints"
+	bl_label = "Delete bone constraints"
+	#bl_description = "Creates bone constraints"
+	bl_options = {"REGISTER", "UNDO"}
+	bl_space_type = "GRAPH_EDITOR"
+	bl_region_type = "UI"
+
+	@classmethod
+	def poll(cls, context):
+		return Active() != null and Active().data and Active().data.pose
+	def execute(s, context):
+		DeleteBoneConstraints(Active())
+		return {"FINISHED"}
+def DeleteBoneConstraints(obj):
+	pose = obj.pose
+	for bone in pose.bones:
+		for constraint in bone.constraints:
+			bone.constraints.remove(constraint)
 
 class set_up_material(bpy.types.Operator):
 	bl_idname = "graph.set_up_material"

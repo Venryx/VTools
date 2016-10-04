@@ -79,6 +79,20 @@ def Nothing():
 def Log(message):
 	print(message)
 
+class AnonymousObject(object):
+	'''def __init__(s, **kwargs):
+		for (k,v) in kwargs.items():
+			s.__setattr__(k, v)'''
+	def __init__(s, dictionary):
+		for (k,v) in dictionary.items():
+			s.__setattr__(k, v)
+	def __repr__(s):
+		return 'literal(%s)' % ', '.join('%s = %r' % i for i in sorted(s.__dict__.items()))
+	def __str__(s):
+		return repr(s)
+def O(dictionary):
+	return AnonymousObject(dictionary)
+
 s_defaultNumberTruncate = -1
 def S(obj, numberTruncate = null):
 	global s_defaultNumberTruncate
@@ -101,7 +115,7 @@ def S(obj, numberTruncate = null):
 			result = result[1:]
 		if result.startswith("-0."):
 			result = "-" + result[2:]
-	
+
 		if result == "-0":
 			result = "0"
 		if result == ".0" or result == "-.0":
@@ -115,7 +129,7 @@ def S(obj, numberTruncate = null):
 		result = "[" + S(obj.x, numberTruncate) + " " + S(obj.y, numberTruncate) + " " + S(obj.z, numberTruncate) + " " + S(obj.w, numberTruncate) + "]"
 	else:
 		result = str(obj)
-	
+
 	return result
 #def st(obj, numberTruncate = null):
 #	return S(obj, numberTruncate)
@@ -127,26 +141,26 @@ def F(body, arglistStr = null):
 		arglistStr = "a"
 
 	'''g = {}
-	exec("def anonfunc({0}):\n{1}".format(arglistStr, "\n".join("    {0}".format(line) for line in body.splitlines())), g)
+	exec("def anonfunc({0}):\n{1}".format(arglistStr, "\n".join("	{0}".format(line) for line in body.splitlines())), g)
 	return g["anonfunc"]'''
 
 	g = globals()
-	exec("def tempFunc({0}):\n{1}".format(arglistStr, "\n".join("    {0}".format(line) for line in body.splitlines())), g)
+	exec("def tempFunc({0}):\n{1}".format(arglistStr, "\n".join("	{0}".format(line) for line in body.splitlines())), g)
 	result = g["tempFunc"]
 	#result = tempFunc
 	#del(tempFunc)
 	return result
 
 def GetCurrentFunction():
-    from inspect import currentframe, getframeinfo
-    frame_back1 = currentframe().f_back
-    func_name = getframeinfo(frame_back1)[2]
+	from inspect import currentframe, getframeinfo
+	frame_back1 = currentframe().f_back
+	func_name = getframeinfo(frame_back1)[2]
 
-    frame_back2 = frame_back1.f_back
-    #from pprint import pprint
-    func = frame_back2.f_locals.get(func_name, frame_back2.f_globals.get(func_name))
+	frame_back2 = frame_back1.f_back
+	#from pprint import pprint
+	func = frame_back2.f_locals.get(func_name, frame_back2.f_globals.get(func_name))
 
-    return func
+	return func
 
 # function helper
 # ==========
@@ -190,7 +204,7 @@ class List(list):
 			if funcStr.count("return ") == 0:
 				funcStr = "return " + funcStr
 			func = F(funcStr)
-		
+
 		result = List()
 		#if "objData" in s:
 		if hasattr(s, "objData"):

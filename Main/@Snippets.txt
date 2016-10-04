@@ -1,0 +1,83 @@
+Copy keyframes into new actions - batch
+==========
+entries = []
+entries.append(O({"name":"combat_mode", "firstFrame":0, "lastFrame": 75}))
+entries.append(O({"name":"ready_arrow_fromBack", "firstFrame":76, "lastFrame": 126}))
+entries.append(O({"name":"ready_arrow_fromSide", "firstFrame":127, "lastFrame": 172}))
+entries.append(O({"name":"charging", "firstFrame":173, "lastFrame": 208}))
+entries.append(O({"name":"aim", "firstFrame":209, "lastFrame": 309}))
+entries.append(O({"name":"shoting", "firstFrame":310, "lastFrame": 345}))
+entries.append(O({"name":"Hit_from_front", "firstFrame":346, "lastFrame": 381}))
+entries.append(O({"name":"moving_left", "firstFrame":382, "lastFrame": 402}))
+entries.append(O({"name":"moving_right", "firstFrame":403, "lastFrame": 423}))
+entries.append(O({"name":"Dying", "firstFrame":424, "lastFrame": 489}))
+entries.append(O({"name":"dodge_backwards", "firstFrame":490, "lastFrame": 525}))
+entries.append(O({"name":"sword_combat_mode", "firstFrame":526, "lastFrame": 576}))
+entries.append(O({"name":"parry", "firstFrame":577, "lastFrame":612}))
+entries.append(O({"name":"swing_left", "firstFrame":613, "lastFrame": 648}))
+entries.append(O({"name":"swing_right", "firstFrame":649, "lastFrame": 684}))
+entries.append(O({"name":"thrust", "firstFrame":685, "lastFrame": 720}))
+entries.append(O({"name":"walk", "firstFrame":724, "lastFrame": 768}))
+entries.append(O({"name":"Jump_runing", "firstFrame":771, "lastFrame": 811}))
+entries.append(O({"name":"Run", "firstFrame":812, "lastFrame": 834}))
+entries.append(O({"name":"StandingFree", "firstFrame":835, "lastFrame": 935}))
+entries.append(O({"name":"looking_around", "firstFrame":936, "lastFrame": 1112}))
+entries.append(O({"name":"talking", "firstFrame":1113, "lastFrame": 1158}))
+entries.append(O({"name":"use_object", "firstFrame":1159, "lastFrame":1199}))
+entries.append(O({"name":"Idle_45left_turn", "firstFrame":1204, "lastFrame": 1219}))
+entries.append(O({"name":"Idle_45Right_turn", "firstFrame":1224, "lastFrame": 1239}))
+entries.append(O({"name":"combat_45left_turn", "firstFrame":1244, "lastFrame": 1259}))
+entries.append(O({"name":"combat_45Right_turn", "firstFrame":1264, "lastFrame": 1279}))
+entries.append(O({"name":"Walk_Combat", "firstFrame":1284, "lastFrame": 1329}))
+entries.append(O({"name":"Walk_Take_Arrow_Back", "firstFrame":1334, "lastFrame": 1379}))
+entries.append(O({"name":"Walk_Take_Arrow_Side", "firstFrame":1384, "lastFrame": 1429}))
+entries.append(O({"name":"Walk_Charging", "firstFrame":1434, "lastFrame": 1479}))
+entries.append(O({"name":"Walk_Aim", "firstFrame":1484, "lastFrame": 1529}))
+entries.append(O({"name":"Walk_Shoting", "firstFrame":1534, "lastFrame": 1579}))
+entries.append(O({"name":"aim_45left_turn", "firstFrame":1584, "lastFrame": 1599}))
+entries.append(O({"name":"aim_45Right_turn", "firstFrame":1604, "lastFrame": 1619}))
+VTools.CopyKeyframesToNewActions(Active().animation_data.action, entries, true)
+
+Delete actions whose name starts with @
+==========
+for action in bpy.data.actions:
+	if action.name.startswith("@"):
+		action.user_clear()
+		bpy.data.actions.remove(action)
+		
+Rename each image-texture to its image-name_0
+==========
+for x in range(0,len(bpy.data.textures)):
+    if bpy.data.textures[x].type == 'IMAGE':
+        bpy.data.textures[x].name = bpy.data.textures[x].image.name[:-4]
+		
+Rename each image-texture to its image-name_1
+==========	
+for tex in bpy.data.textures:
+    if tex.type == 'IMAGE':
+        tex.name = tex.name.rsplit(".", 1) # should be safe enough
+		
+Rename each image to match its path/filename (with extension)
+==========	
+for image in bpy.data.images:
+    image.name = re.search(r"([^\\\/]+\.[a-zA-Z]+)$", image.filepath).group(1)
+	
+Rename each image to match its path/filename (without extension)
+==========	
+for image in bpy.data.images:
+    image.name = re.search(r"([^\\\/]+)\.[a-zA-Z]+$", image.filepath).group(1)
+	
+Generate bone-constraints from armature a to b
+==========
+def GenerateBoneConstraintsFromArmatureAToB(fromArmatureObjName, toArmatureObjName, bonesToIgnore = []):
+	# todo
+	
+Bake action (custom version able to, e.g. only create keyframes for frames that already exist in the action (or some other action))
+==========
+def BakeAction(armatureObjName, bonesToIgnore = []):
+	# todo
+	
+Delete bone-constraints
+==========
+def DeleteBoneConstraints(armatureObjName, bonesToIgnore = []):
+	# todo
